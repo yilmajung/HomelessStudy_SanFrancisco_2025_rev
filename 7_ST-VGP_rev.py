@@ -7,6 +7,7 @@ from tqdm import tqdm
 import re
 from torch.utils.data import DataLoader, TensorDataset
 from torch.cuda.amp import autocast, GradScaler
+from sklearn.preprocessing import StandardScaler
 
 # Load and preprocess the dataset
 print("Loading dataset...")
@@ -62,8 +63,8 @@ Z_covariates = inducing_df[['max','min','precipitation','total_population','whit
 print("Preparing training tensors...")
 train_x_np = np.hstack((spatial_coords, temporal_coords, X_covariates))
 train_y_np = y_counts
-train_x = torch.tensor(train_x_np, dtype=torch.float32)
-train_y = torch.tensor(train_y_np, dtype=torch.float32)
+train_x = torch.tensor(scaler.fit_transform(train_x_np), dtype=torch.float32)
+train_y = torch.tensor(scaler.transform(train_y_np), dtype=torch.float32)
 inducing_points = torch.tensor(np.hstack((Z_spatial, Z_temporal, Z_covariates)), dtype=torch.float32)
 
 # Dataset and DataLoader for batching
@@ -151,7 +152,8 @@ for i in tqdm(range(training_iterations)):
     for x_batch, y_batch in train_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
         optimizer.zero_grad()
-        with autocast(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.fast_computations(True):
+        with autocast(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.fast_computations(True), \
+             gpytorch.settings.cholesky_jitter(1e-3):
             output = model(x_batch)
             loss = -mll(output, y_batch)
         scaler.scale(loss).backward()
