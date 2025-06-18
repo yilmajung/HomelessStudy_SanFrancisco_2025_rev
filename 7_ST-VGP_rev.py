@@ -151,7 +151,7 @@ for i in tqdm(range(training_iterations)):
     for x_batch, y_batch in train_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
         optimizer.zero_grad()
-        with autocast(), gpytorch.settings.checkpoint_kernel(True):
+        with autocast(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.fast_computations(True):
             output = model(x_batch)
             loss = -mll(output, y_batch)
         scaler.scale(loss).backward()
