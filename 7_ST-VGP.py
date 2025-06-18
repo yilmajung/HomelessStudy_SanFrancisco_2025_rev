@@ -149,5 +149,8 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
 # Add predictions to the test DataFrame
 df_test['predicted_counts'] = predictions
 
+# Add uncertainty (standard deviation)
+df_test['predicted_std'] = predictive_dist.stddev.numpy()
+
 # Save predictions to CSV
-df_test[['bboxid', 'predicted_counts']].to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/predictions_st_vgp.csv', index=False)
+df_test[['bboxid', 'predicted_counts', 'predicted_std']].to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/predictions_st_vgp.csv', index=False)
