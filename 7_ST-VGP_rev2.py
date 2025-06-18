@@ -159,7 +159,7 @@ with torch.no_grad():
     K_tm = model.temporal_kernel(x_tm).evaluate()
     K_cov = model.covariate_kernel(x_cov).evaluate()
 
-    K_total = K_sp * K_tm * K_cov
+    K_total = K_sp + K_tm + K_cov
 
     print("K_total min:", K_total.min().item())
     print("K_total mean:", K_total.mean().item())
