@@ -106,7 +106,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
         covar_x = self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) * self.covariate_kernel(covariate_x)
-        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-3
+        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-2
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
@@ -163,6 +163,27 @@ with torch.no_grad():
     print("  Is NaN:", torch.isnan(cov).any().item())
     print("  Is Inf:", torch.isinf(cov).any().item())
     print("  Is Symmetric:", torch.allclose(cov, cov.T, atol=1e-5))
+    
+    # Check spatial kernel
+    spatial_x = inducing_points[:, :2].to(device)
+    cov_spatial = model.spatial_kernel(spatial_x).evaluate()
+    print("Spatial Cov matrix stats:")
+    print("  min:", cov_spatial.min().item())
+    print("  mean:", cov_spatial.mean().item())
+    print("  diag min:", cov_spatial.diag().min().item())
+    print("  Is NaN:", torch.isnan(cov_spatial).any().item())
+    print("  Is Symmetric:", torch.allclose(cov_spatial, cov_spatial.T, atol=1e-5))
+
+    # Check temporal kernel
+    temporal_x = inducing_points[:, 2:3].to(device)
+    cov_temporal = model.temporal_kernel(temporal_x).evaluate()
+    print("Temporal Cov matrix stats:")
+    print("  min:", cov_temporal.min().item())
+    print("  mean:", cov_temporal.mean().item())
+    print("  diag min:", cov_temporal.diag().min().item())
+    print("  Is NaN:", torch.isnan(cov_temporal).any().item())
+    print("  Is Symmetric:", torch.allclose(cov_temporal, cov_temporal.T, atol=1e-5))
+
 
 model.train()
 likelihood.train()
