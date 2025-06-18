@@ -151,39 +151,20 @@ model = STVGPModel(inducing_points.to(device)).to(device)
 # Quick diagnose for kernel matrix
 
 with torch.no_grad():
-    # Extract only the covariate part: columns 3 onward
-    inducing_covariates = inducing_points[:, 3:]
-    cov = model.covariate_kernel(inducing_covariates.to(device)).evaluate()
-    print("Cov matrix stats:")
-    print("  min:", cov.min().item())
-    print("  max:", cov.max().item())
-    print("  mean:", cov.mean().item())
-    print("  diag min:", cov.diag().min().item())
-    print("  diag max:", cov.diag().max().item())
-    print("  Is NaN:", torch.isnan(cov).any().item())
-    print("  Is Inf:", torch.isinf(cov).any().item())
-    print("  Is Symmetric:", torch.allclose(cov, cov.T, atol=1e-5))
-    
-    # Check spatial kernel
-    spatial_x = inducing_points[:, :2].to(device)
-    cov_spatial = model.spatial_kernel(spatial_x).evaluate()
-    print("Spatial Cov matrix stats:")
-    print("  min:", cov_spatial.min().item())
-    print("  mean:", cov_spatial.mean().item())
-    print("  diag min:", cov_spatial.diag().min().item())
-    print("  Is NaN:", torch.isnan(cov_spatial).any().item())
-    print("  Is Symmetric:", torch.allclose(cov_spatial, cov_spatial.T, atol=1e-5))
+    x_sp = inducing_points[:, :2].to(device)
+    x_tm = inducing_points[:, 2:3].to(device)
+    x_cov = inducing_points[:, 3:].to(device)
 
-    # Check temporal kernel
-    temporal_x = inducing_points[:, 2:3].to(device)
-    cov_temporal = model.temporal_kernel(temporal_x).evaluate()
-    print("Temporal Cov matrix stats:")
-    print("  min:", cov_temporal.min().item())
-    print("  mean:", cov_temporal.mean().item())
-    print("  diag min:", cov_temporal.diag().min().item())
-    print("  Is NaN:", torch.isnan(cov_temporal).any().item())
-    print("  Is Symmetric:", torch.allclose(cov_temporal, cov_temporal.T, atol=1e-5))
+    K_sp = model.spatial_kernel(x_sp).evaluate()
+    K_tm = model.temporal_kernel(x_tm).evaluate()
+    K_cov = model.covariate_kernel(x_cov).evaluate()
 
+    K_total = K_sp * K_tm * K_cov
+
+    print("K_total min:", K_total.min().item())
+    print("K_total mean:", K_total.mean().item())
+    print("K_total diag min:", K_total.diag().min().item())
+    print("K_total is NaN:", torch.isnan(K_total).any().item())
 
 model.train()
 likelihood.train()
