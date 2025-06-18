@@ -75,7 +75,7 @@ inducing_points_np = np.hstack((Z_spatial, Z_temporal, Z_covariates))
 inducing_points = torch.tensor(scaler.transform(inducing_points_np), dtype=torch.float32)
 
 # Dataset and DataLoader for batching
-batch_size = 512
+batch_size = 1024
 train_dataset = TensorDataset(train_x, train_y)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
@@ -93,11 +93,11 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=7))
         self.mean_module = gpytorch.means.LinearMean(input_size=7)
         self.spatial_kernel.outputscale = 0.1
-        self.spatial_kernel.base_kernel.lengthscale = 10.0
+        self.spatial_kernel.base_kernel.lengthscale = 1.0
         self.temporal_kernel.outputscale = 0.1
-        self.temporal_kernel.base_kernel.lengthscale = 10.0
+        self.temporal_kernel.base_kernel.lengthscale = 1.0
         self.covariate_kernel.outputscale = 0.1
-        self.covariate_kernel.base_kernel.lengthscale = 5.0
+        self.covariate_kernel.base_kernel.lengthscale = 1.0
 
 
     def forward(self, x):
