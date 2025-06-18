@@ -97,7 +97,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         # self.temporal_kernel.outputscale = 0.1
         # self.temporal_kernel.base_kernel.lengthscale = 1.0
         self.covariate_kernel.outputscale = 0.1
-        self.covariate_kernel.base_kernel.lengthscale = 1.0
+        self.covariate_kernel.base_kernel.lengthscale = 5.0
 
 
     def forward(self, x):
