@@ -74,10 +74,6 @@ train_y = torch.tensor(train_y_np, dtype=torch.float32)
 inducing_points_np = np.hstack((Z_spatial, Z_temporal, Z_covariates))
 inducing_points = torch.tensor(scaler.transform(inducing_points_np), dtype=torch.float32)
 
-print("Inducing point stats:")
-print("  min:", np.min(inducing_points_np, axis=0))
-print("  max:", np.max(inducing_points_np, axis=0))
-
 # Dataset and DataLoader for batching
 batch_size = 1024
 train_dataset = TensorDataset(train_x, train_y)
@@ -92,8 +88,8 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         )
         super(STVGPModel, self).__init__(variational_strategy)
 
-        self.spatial_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2))
-        self.temporal_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5))
+        # self.spatial_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2))
+        # self.temporal_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5))
         self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=7))
         self.mean_module = gpytorch.means.LinearMean(input_size=7)
         self.spatial_kernel.outputscale = 0.1
@@ -109,7 +105,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         temporal_x = x[:, 2:3]
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
-        covar_x = self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) * self.covariate_kernel(covariate_x)
+        covar_x = self.covariate_kernel(covariate_x) #self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) * 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 # Negative Binomial Likelihood
