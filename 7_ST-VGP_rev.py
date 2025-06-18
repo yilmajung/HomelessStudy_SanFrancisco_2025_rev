@@ -147,8 +147,11 @@ likelihood = NegativeBinomialLikelihood(dispersion=1.0).to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
 
 # Quick diagnose for kernel matrix
+
 with torch.no_grad():
-    cov = model.covariate_kernel(inducing_points.to(device)).evaluate()
+    # Extract only the covariate part: columns 3 onward
+    inducing_covariates = inducing_points[:, 3:]
+    cov = model.covariate_kernel(inducing_covariates.to(device)).evaluate()
     print("Cov matrix stats:")
     print("  min:", cov.min().item())
     print("  max:", cov.max().item())
