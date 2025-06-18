@@ -75,16 +75,14 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 class STVGPModel(gpytorch.models.ApproximateGP):
     def __init__(self, inducing_points):
         variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(inducing_points.size(0))
-        variational_strategy = gpytorch.variational.MiniBatchVariationalStrategy(
-            gpytorch.variational.VariationalStrategy(self, inducing_points, variational_distribution, learn_inducing_locations=True),
-            num_data=train_x.size(0),
-            batch_size=batch_size
+        variational_strategy = gpytorch.variational.VariationalStrategy(
+            self, inducing_points, variational_distribution, learn_inducing_locations=True
         )
         super(STVGPModel, self).__init__(variational_strategy)
 
         self.spatial_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2))
         self.temporal_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5))
-        self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=5))
+        self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=7))
         self.mean_module = gpytorch.means.LinearMean(input_size=7)
 
     def forward(self, x):
@@ -149,7 +147,7 @@ training_iterations = 500
 # Training loop with AMP and mini-batching
 print("Starting training...")
 for i in tqdm(range(training_iterations)):
-    epoch_loss = 0
+    total_loss = 0
     for x_batch, y_batch in train_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
         optimizer.zero_grad()
@@ -159,9 +157,9 @@ for i in tqdm(range(training_iterations)):
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
-        epoch_loss += loss.item()
+        total_loss += loss.item()
     if (i+1) % 10 == 0:
-        print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {epoch_loss:.3f}")
+        print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
 
 # Prediction
 print("Starting prediction...")
