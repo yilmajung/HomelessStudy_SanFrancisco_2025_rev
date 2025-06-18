@@ -63,6 +63,7 @@ Z_covariates = inducing_df[['max','min','precipitation','total_population','whit
 print("Preparing training tensors...")
 train_x_np = np.hstack((spatial_coords, temporal_coords, X_covariates))
 train_y_np = y_counts
+scaler = StandardScaler()
 train_x = torch.tensor(scaler.fit_transform(train_x_np), dtype=torch.float32)
 train_y = torch.tensor(scaler.transform(train_y_np), dtype=torch.float32)
 inducing_points = torch.tensor(np.hstack((Z_spatial, Z_temporal, Z_covariates)), dtype=torch.float32)
@@ -142,7 +143,7 @@ optimizer = torch.optim.Adam([
 
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
 
-scaler = GradScaler()
+scaler2 = GradScaler()
 training_iterations = 500
 
 # Training loop with AMP and mini-batching
@@ -156,9 +157,9 @@ for i in tqdm(range(training_iterations)):
              gpytorch.settings.cholesky_jitter(1e-3):
             output = model(x_batch)
             loss = -mll(output, y_batch)
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
+        scaler2.scale(loss).backward()
+        scaler2.step(optimizer)
+        scaler2.update()
         total_loss += loss.item()
     if (i+1) % 10 == 0:
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
