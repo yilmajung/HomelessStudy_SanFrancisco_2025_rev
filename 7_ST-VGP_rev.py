@@ -9,7 +9,10 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.cuda.amp import autocast, GradScaler
 
 # Load and preprocess the dataset
+print("Loading dataset...")
 df = pd.read_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/df_cleaned_20250617.csv')
+
+print("Preprocessing dataset...")
 df['latitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[0]))
 df['longitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[1]))
 df['latitude'] = df['latitude'].apply(lambda x: float(re.search(r'\d+.\d+', x).group()))
@@ -28,6 +31,7 @@ X_covariates = df_training[['max','min','precipitation','total_population','whit
 y_counts = df_training['ground_truth'].values
 
 # Inducing Points Strategy (Density-based + Random)
+print("Selecting inducing points...")
 # Number of inducing points
 num_density_points = 400
 num_random_points = 100
@@ -55,6 +59,7 @@ Z_covariates = inducing_df[['max','min','precipitation','total_population','whit
 # inducing_points = torch.tensor(np.hstack((Z_spatial, np.full((Z_spatial.shape[0], 1), Z_temporal), Z_covariates)), dtype=torch.float32)
 
 # Prepare training tensors
+print("Preparing training tensors...")
 train_x_np = np.hstack((spatial_coords, temporal_coords, X_covariates))
 train_y_np = y_counts
 train_x = torch.tensor(train_x_np, dtype=torch.float32)
@@ -142,6 +147,7 @@ scaler = GradScaler()
 training_iterations = 500
 
 # Training loop with AMP and mini-batching
+print("Starting training...")
 for i in tqdm(range(training_iterations)):
     epoch_loss = 0
     for x_batch, y_batch in train_loader:
