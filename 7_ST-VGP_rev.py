@@ -172,8 +172,7 @@ for i in tqdm(range(training_iterations)):
     for x_batch, y_batch in train_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
         optimizer.zero_grad()
-        with autocast(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.fast_computations(True), \
-             gpytorch.settings.cholesky_jitter(1e-3):
+        with autocast(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.fast_computations(True):#, gpytorch.settings.cholesky_jitter(1e-3):
             output = model(x_batch)
             loss = -mll(output, y_batch)
         scaler2.scale(loss).backward()
