@@ -86,6 +86,13 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         self.temporal_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5))
         self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=7))
         self.mean_module = gpytorch.means.LinearMean(input_size=7)
+        self.spatial_kernel.outputscale = 1.0
+        self.spatial_kernel.base_kernel.lengthscale = 1.0
+        self.temporal_kernel.outputscale = 1.0
+        self.temporal_kernel.base_kernel.lengthscale = 1.0
+        self.covariate_kernel.outputscale = 1.0
+        self.covariate_kernel.base_kernel.lengthscale = 1.0
+
 
     def forward(self, x):
         spatial_x = x[:, :2]
@@ -139,12 +146,18 @@ likelihood.train()
 optimizer = torch.optim.Adam([
     {'params': model.parameters()},
     {'params': likelihood.parameters()},
-], lr=0.01)
+], lr=0.005)
 
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
 
 scaler2 = GradScaler()
 training_iterations = 500
+
+# Quick check for NaN values
+assert not torch.isnan(train_x).any(), "train_x contains NaNs"
+assert not torch.isinf(train_x).any(), "train_x contains Infs"
+assert not torch.isnan(inducing_points).any(), "inducing_points contain NaNs"
+assert not torch.isinf(inducing_points).any(), "inducing_points contain Infs"
 
 # Training loop with AMP and mini-batching
 print("Starting training...")
