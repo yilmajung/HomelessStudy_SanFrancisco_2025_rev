@@ -56,6 +56,11 @@ Z_spatial = inducing_df[['longitude', 'latitude']].values
 Z_temporal = inducing_df[['timestamp']].values
 Z_covariates = inducing_df[['max','min','precipitation','total_population','white_ratio','black_ratio','hh_median_income']].values
 
+# Quick check for NaN values
+assert not np.isnan(Z_spatial).any()
+assert not np.isnan(Z_temporal).any()
+assert not np.isnan(Z_covariates).any()
+
 # # Final inducing points tensor
 # inducing_points = torch.tensor(np.hstack((Z_spatial, np.full((Z_spatial.shape[0], 1), Z_temporal), Z_covariates)), dtype=torch.float32)
 
@@ -66,7 +71,12 @@ train_y_np = y_counts
 scaler = StandardScaler()
 train_x = torch.tensor(scaler.fit_transform(train_x_np), dtype=torch.float32)
 train_y = torch.tensor(train_y_np, dtype=torch.float32)
-inducing_points = torch.tensor(scaler.transform(np.hstack((Z_spatial, Z_temporal, Z_covariates))), dtype=torch.float32)
+inducing_points_np = np.hstack((Z_spatial, Z_temporal, Z_covariates))
+inducing_points = torch.tensor(scaler.transform(inducing_points_np), dtype=torch.float32)
+
+print("Inducing point stats:")
+print("  min:", np.min(inducing_points_np, axis=0))
+print("  max:", np.max(inducing_points_np, axis=0))
 
 # Dataset and DataLoader for batching
 batch_size = 1024
@@ -76,7 +86,7 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 # Define model with MiniBatchVariationalStrategy
 class STVGPModel(gpytorch.models.ApproximateGP):
     def __init__(self, inducing_points):
-        variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(inducing_points.size(0))
+        variational_distribution = gpytorch.variational.MeanFieldVariationalDistribution(inducing_points.size(0))
         variational_strategy = gpytorch.variational.VariationalStrategy(
             self, inducing_points, variational_distribution, learn_inducing_locations=True
         )
