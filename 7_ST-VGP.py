@@ -3,6 +3,7 @@ import gpytorch
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
+from tqdm import tqdm
 
 # Load the dataset
 df = pd.read_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/df_cleaned_20250617.csv')
@@ -123,7 +124,7 @@ optimizer = torch.optim.Adam([
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, train_y.numel())
 
 training_iterations = 500
-for i in range(training_iterations):
+for i in tqdm(range(training_iterations)):
     optimizer.zero_grad()
     output = model(train_x)
     loss = -mll(output, train_y)
