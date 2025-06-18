@@ -31,7 +31,7 @@ y_counts = df_training['ground_truth'].values
 
 # Inducing Points Strategy (Density-based)
 bbox_counts = df.groupby('bboxid')['ground_truth'].mean().reset_index()
-top_bbox_ids = bbox_counts.nlargest(500, 'ground_truth')['bboxid'].values # Top 500 bboxes which has larger than 1 on average
+top_bbox_ids = bbox_counts.nlargest(50, 'ground_truth')['bboxid'].values # Top 500 bboxes which has larger than 1 on average
 
 # Select inducing points coordinates from top boxes
 inducing_df = df_training[df_training['bboxid'].isin(top_bbox_ids)].drop_duplicates(subset=['bboxid'])
