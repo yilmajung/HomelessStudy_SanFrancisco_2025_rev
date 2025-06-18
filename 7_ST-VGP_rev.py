@@ -65,8 +65,8 @@ train_x_np = np.hstack((spatial_coords, temporal_coords, X_covariates))
 train_y_np = y_counts
 scaler = StandardScaler()
 train_x = torch.tensor(scaler.fit_transform(train_x_np), dtype=torch.float32)
-train_y = torch.tensor(scaler.transform(train_y_np), dtype=torch.float32)
-inducing_points = torch.tensor(np.hstack((Z_spatial, Z_temporal, Z_covariates)), dtype=torch.float32)
+train_y = torch.tensor(train_y_np, dtype=torch.float32)
+inducing_points = torch.tensor(scaler.transform(np.hstack((Z_spatial, Z_temporal, Z_covariates))), dtype=torch.float32)
 
 # Dataset and DataLoader for batching
 batch_size = 1024
