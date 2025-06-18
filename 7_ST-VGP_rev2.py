@@ -34,8 +34,8 @@ y_counts = df_training['ground_truth'].values
 # Inducing Points Strategy (Density-based + Random)
 print("Selecting inducing points...")
 # Number of inducing points
-num_density_points = 160
-num_random_points = 40
+num_density_points = 240
+num_random_points = 60
 
 # Compute average counts per bounding box
 bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
@@ -82,7 +82,7 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 # Define model with MiniBatchVariationalStrategy
 class STVGPModel(gpytorch.models.ApproximateGP):
     def __init__(self, inducing_points):
-        variational_distribution = gpytorch.variational.MeanFieldVariationalDistribution(inducing_points.size(0))
+        variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(inducing_points.size(0))
         variational_strategy = gpytorch.variational.VariationalStrategy(
             self, inducing_points, variational_distribution, learn_inducing_locations=True
         )
