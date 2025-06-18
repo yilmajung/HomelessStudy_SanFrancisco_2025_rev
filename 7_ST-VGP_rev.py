@@ -105,7 +105,9 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         temporal_x = x[:, 2:3]
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
-        covar_x = self.covariate_kernel(covariate_x) #self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) * 
+        covar_x = self.covariate_kernel(covariate_x) #self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) *
+        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-3
+
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 # Negative Binomial Likelihood
