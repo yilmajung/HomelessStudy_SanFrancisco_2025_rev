@@ -146,6 +146,19 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 likelihood = NegativeBinomialLikelihood(dispersion=1.0).to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
 
+# Quick diagnose for kernel matrix
+with torch.no_grad():
+    cov = model.covariate_kernel(inducing_points.to(device)).evaluate()
+    print("Cov matrix stats:")
+    print("  min:", cov.min().item())
+    print("  max:", cov.max().item())
+    print("  mean:", cov.mean().item())
+    print("  diag min:", cov.diag().min().item())
+    print("  diag max:", cov.diag().max().item())
+    print("  Is NaN:", torch.isnan(cov).any().item())
+    print("  Is Inf:", torch.isinf(cov).any().item())
+    print("  Is Symmetric:", torch.allclose(cov, cov.T, atol=1e-5))
+
 model.train()
 likelihood.train()
 
