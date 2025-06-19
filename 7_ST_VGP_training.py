@@ -55,7 +55,7 @@ inducing_bbox_ids = np.concatenate([top_density_bboxes, random_bboxes])
 inducing_df = df_training[df_training['bboxid'].isin(inducing_bbox_ids)].drop_duplicates('bboxid')
 
 # Extract coordinates
-Z_spatial = inducing_df[['longitude', 'latitude']].values
+Z_spatial = inducing_df[['latitude','longitude']].values
 Z_temporal = inducing_df[['timestamp']].values
 Z_covariates = inducing_df[['max','min','precipitation','total_population','white_ratio','black_ratio','hh_median_income']].values
 
@@ -95,11 +95,11 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         self.temporal_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5))
         self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=7))
         self.mean_module = gpytorch.means.LinearMean(input_size=7)
-        self.spatial_kernel.outputscale = 0.5
+        self.spatial_kernel.outputscale = 0.1
         self.spatial_kernel.base_kernel.lengthscale = 1.0
-        self.temporal_kernel.outputscale = 0.5
+        self.temporal_kernel.outputscale = 0.1
         self.temporal_kernel.base_kernel.lengthscale = 1.0
-        self.covariate_kernel.outputscale = 0.5
+        self.covariate_kernel.outputscale = 0.1
         self.covariate_kernel.base_kernel.lengthscale = 1.0
 
     def forward(self, x):
@@ -109,7 +109,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         mean_x = self.mean_module(covariate_x)
         mean_x = mean_x.clamp(min=-10.0, max=10.0)  # avoids very large exp()
         covar_x = self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
-        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1.0 # add jitter to avoid numerical issues
+        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-1 # add jitter to avoid numerical issues
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
