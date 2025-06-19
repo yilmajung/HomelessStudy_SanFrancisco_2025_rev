@@ -211,10 +211,11 @@ print("Starting prediction...")
 model.eval()
 likelihood.eval()
 
-test_x = torch.tensor(df_test[['latitude', 'longitude', 'timestamp', 'max','min','precipitation',
-                               'total_population','white_ratio','black_ratio','hh_median_income']].values, dtype=torch.float32)
+test_x_np = df_test[['latitude', 'longitude', 'timestamp', 'max','min','precipitation',
+                     'total_population','white_ratio','black_ratio','hh_median_income']].values
 
-test_dataset = TensorDataset(test_x)
+test_x_scaled =  = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32)
+test_dataset = TensorDataset(test_x_scaled)
 test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
 all_means = []
@@ -222,7 +223,16 @@ all_stddevs = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var(), autocast():
     for (x_batch,) in tqdm(test_loader):
-        preds = likelihood(model(x_batch.cuda()))
+        x_batch = x_batch.to(device)
+        latent_f = model(x_batch)
+        latent_mean = latent_f.mean
+        print("latent_mean stats:", latent_mean.min().item(), latent_mean.max().item(), torch.isnan(latent_mean).any().item())
+
+        # Safeguard exp before it's passed into the likelihood
+        if torch.isnan(latent_mean).any():
+            raise ValueError("NaN detected in latent function mean before applying exp")
+        
+        preds = likelihood(latent_f)
         mean_batch = preds.mean.cpu().numpy()
         stddev_batch = preds.stddev.cpu().numpy()
 
