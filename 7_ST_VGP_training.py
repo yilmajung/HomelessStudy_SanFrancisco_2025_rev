@@ -290,7 +290,7 @@ likelihood.train()
 
 optimizer = torch.optim.Adam([
     {'params': model.parameters()},
-    {'params': likelihood.parameters()},
+    {'params': likelihood.parameters(), 'lr':1e-4},
 ], lr=0.01)
 
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
