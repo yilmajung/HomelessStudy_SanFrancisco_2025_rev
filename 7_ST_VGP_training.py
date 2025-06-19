@@ -126,14 +126,14 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
     def forward(self, function_samples, **kwargs):
         mu = function_samples.exp()
-        total_count = self.dispersion
+        total_count = self.dispersion.float()
         probs = total_count / (total_count + mu)
         probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
         return NegativeBinomial(total_count=total_count, probs=probs)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
         mean = function_dist.mean.exp()
-        total_count = self.dispersion
+        total_count = self.dispersion.float()
         probs = total_count / (total_count + mean)
         probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
         dist = NegativeBinomial(total_count=total_count, probs=probs)
@@ -141,7 +141,7 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
     def log_marginal(self, observations, function_dist, **kwargs):
         mean = function_dist.mean.exp()
-        total_count = self.dispersion
+        total_count = self.dispersion.float()
         probs = total_count / (total_count + mean)
         probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
         dist = NegativeBinomial(total_count=total_count, probs=probs)
