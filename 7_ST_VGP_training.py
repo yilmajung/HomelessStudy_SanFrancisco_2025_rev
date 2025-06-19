@@ -112,7 +112,8 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         Ks = self.spatial_kernel(spatial_x)
         Kt = self.temporal_kernel(temporal_x)
         Kc = self.covariate_kernel(covariate_x)
-        Kconst = gpytorch.kernels.ConstantKernel(1.0, batch_shape=Ks.batch_shape)
+        const_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.ConstantKernel())
+        Kconst = const_kernel(spatial_x)
 
         covar_x = Ks * Kt * Kc + Ks + Kt + Kc + Kconst
         covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-1 # add jitter to avoid numerical issues
