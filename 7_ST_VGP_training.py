@@ -115,9 +115,9 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 
 # Negative Binomial Likelihood
 class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
-    def __init__(self, init_dispersion=1.0):
+    def __init__(self):
         super().__init__()
-        raw_disp = torch.tensor(np.log(np.exp(3.0) - 1)).unsqueeze(0)  # inverse softplus(3.0)
+        raw_disp = torch.tensor(np.log(np.exp(2.0) - 1)).unsqueeze(0)  # inverse softplus(3.0)
         self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
 
 
@@ -269,7 +269,7 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
 # Move model and likelihood to GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-likelihood = StableNegativeBinomialLikelihood(init_dispersion=1.0).to(device)
+likelihood = StableNegativeBinomialLikelihood().to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
 
 # Quick diagnose for kernel matrix
