@@ -207,6 +207,7 @@ for i in tqdm(range(training_iterations)):
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
         print(f"Kernel lengthscale: {model.covariate_kernel.base_kernel.lengthscale.detach().cpu().numpy()}")
+        print("Dispersion gradient:", likelihood.raw_dispersion.grad)
 
 
 # Save the model
