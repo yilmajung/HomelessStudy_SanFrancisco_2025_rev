@@ -127,15 +127,16 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
     def forward(self, function_samples, **kwargs):
         mu = function_samples.exp().clamp(min=1e-3, max=1e3)
-        r = self.dispersion.expand_as(logits).float()
+        r = self.dispersion
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+        r = self.dispersion.expand_as(logits).float()
         return torch.distributions.NegativeBinomial(total_count=r, logits=logits)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
         mu = function_dist.mean.exp().clamp(min=1e-3, max=1e3)
-        r = self.dispersion.expand_as(logits).float()
+        r = self.dispersion
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
-
+        r = self.dispersion.expand_as(logits).float()
         # print("Logits stats - min:", logits.min().item(), 
         #       "max:", logits.max().item(), 
         #       "any NaN?", torch.isnan(logits).any().item())
