@@ -117,7 +117,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
     def __init__(self, init_dispersion=1.0):
         super().__init__()
-        raw_disp = torch.tensor(init_dispersion).log().unsqueeze(0)
+        raw_disp = torch.tensor([2.0], dtype=torch.float32).log()  # larger starting value
         self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
 
     @property
@@ -128,12 +128,15 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
         mu = function_samples.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
         logits = (mu / r).log()
+        print("Logits stats - min:", logits.min().item(), 
+              "max:", logits.max().item(), 
+              "any NaN?", torch.isnan(logits).any().item())
         return torch.distributions.NegativeBinomial(total_count=r, logits=logits)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
         mu = function_dist.mean.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
-        logits = (mu / r).log()
+        logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
 
         dist = torch.distributions.NegativeBinomial(total_count=r, logits=logits)
         return dist.log_prob(target)
