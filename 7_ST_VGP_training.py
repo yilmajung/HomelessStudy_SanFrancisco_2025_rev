@@ -122,48 +122,75 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
     @property
     def dispersion(self):
-        return F.softplus(self.raw_log_dispersion)
+        return torch.nn.functional.softplus(self.raw_log_dispersion)
 
     def forward(self, function_samples, **kwargs):
-        # Convert GP output to mean
-        mu = function_samples.exp()
-        mu = mu.clamp(min=1e-3, max=1e3)  # avoid overflows
-
-        # Convert to total_count and probs
-        total_count = self.dispersion
-        probs = total_count / (total_count + mu)
-        probs = probs.clamp(min=1e-4, max=1 - 1e-4)
-
-        return NegativeBinomial(total_count=total_count, probs=probs)
+        mu = function_samples.exp().clamp(min=1e-3, max=1e3)
+        r = self.dispersion
+        logits = (mu / r).log()
+        return torch.distributions.NegativeBinomial(total_count=r, logits=logits)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
-        print("GP mean stats:")
-        print("  min:", function_dist.mean.min().item())
-        print("  max:", function_dist.mean.max().item())
-        print("  any NaN?", torch.isnan(function_dist.mean).any().item())
+        mu = function_dist.mean.exp().clamp(min=1e-3, max=1e3)
+        r = self.dispersion
+        logits = (mu / r).log()
 
-        mean = function_dist.mean.exp()
-        print("Exp(mean) stats:")
-        print("  min:", mean.min().item())
-        print("  max:", mean.max().item())
-        print("  any NaN?", torch.isnan(mean).any().item())
-
-        mean = mean.clamp(min=1e-3, max=1e3)
-
-        total_count = self.dispersion
-        probs = total_count / (total_count + mean)
-        probs = probs.clamp(min=1e-4, max=1 - 1e-4)
-
-        print("Probs stats:")
-        print("  min:", probs.min().item())
-        print("  max:", probs.max().item())
-        print("  any NaN?", torch.isnan(probs).any().item())
-
-        dist = NegativeBinomial(total_count=total_count, probs=probs)
+        dist = torch.distributions.NegativeBinomial(total_count=r, logits=logits)
         return dist.log_prob(target)
 
     def log_marginal(self, observations, function_dist, **kwargs):
         return self.expected_log_prob(observations, function_dist, **kwargs)
+
+# class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
+#     def __init__(self, init_dispersion=1.0):
+#         super().__init__()
+#         raw_disp = torch.tensor(init_dispersion).log().unsqueeze(0)
+#         self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
+
+#     @property
+#     def dispersion(self):
+#         return F.softplus(self.raw_log_dispersion)
+
+#     def forward(self, function_samples, **kwargs):
+#         # Convert GP output to mean
+#         mu = function_samples.exp()
+#         mu = mu.clamp(min=1e-3, max=1e3)  # avoid overflows
+
+#         # Convert to total_count and probs
+#         total_count = self.dispersion
+#         probs = total_count / (total_count + mu)
+#         probs = probs.clamp(min=1e-4, max=1 - 1e-4)
+
+#         return NegativeBinomial(total_count=total_count, probs=probs)
+
+#     def expected_log_prob(self, target, function_dist, **kwargs):
+#         print("GP mean stats:")
+#         print("  min:", function_dist.mean.min().item())
+#         print("  max:", function_dist.mean.max().item())
+#         print("  any NaN?", torch.isnan(function_dist.mean).any().item())
+
+#         mean = function_dist.mean.exp()
+#         print("Exp(mean) stats:")
+#         print("  min:", mean.min().item())
+#         print("  max:", mean.max().item())
+#         print("  any NaN?", torch.isnan(mean).any().item())
+
+#         mean = mean.clamp(min=1e-3, max=1e3)
+
+#         total_count = self.dispersion
+#         probs = total_count / (total_count + mean)
+#         probs = probs.clamp(min=1e-4, max=1 - 1e-4)
+
+#         print("Probs stats:")
+#         print("  min:", probs.min().item())
+#         print("  max:", probs.max().item())
+#         print("  any NaN?", torch.isnan(probs).any().item())
+
+#         dist = NegativeBinomial(total_count=total_count, probs=probs)
+#         return dist.log_prob(target)
+
+#     def log_marginal(self, observations, function_dist, **kwargs):
+#         return self.expected_log_prob(observations, function_dist, **kwargs)
 
 
 # class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
