@@ -117,12 +117,14 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
     def __init__(self, init_log_dispersion=0.0):
         super().__init__()
-        self.log_dispersion = torch.nn.Parameter(torch.tensor(init_log_dispersion))  # log(dispersion)
+        raw_log_disp = torch.tensor(init_log_dispersion).float()
+        self.register_parameter("raw_log_dispersion", torch.nn.Parameter(raw_log_disp))
+        self.register_constraint("raw_log_dispersion", gpytorch.constraints.GreaterThan(-6.0))  # softer constraint
 
     @property
     def dispersion(self):
         # Use softplus to ensure positivity and prevent NaNs
-        return F.softplus(self.log_dispersion)
+        return F.softplus(self.raw_log_dispersion)
 
     def forward(self, function_samples, **kwargs):
         mu = function_samples.exp()
@@ -241,7 +243,7 @@ for i in tqdm(range(training_iterations)):
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
         print(f"Kernel lengthscale: {model.covariate_kernel.base_kernel.lengthscale.detach().cpu().numpy()}")
-        print("Dispersion gradient:", likelihood.log_dispersion.grad)
+        print("Dispersion gradient:", likelihood.raw_log_dispersion.grad)
 
 
 # Save the model
