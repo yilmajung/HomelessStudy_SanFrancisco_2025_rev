@@ -108,7 +108,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
         covar_x = self.spatial_kernel(spatial_x) + self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
-        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-2
+        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-3
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
@@ -200,7 +200,6 @@ for i in tqdm(range(training_iterations)):
             output = model(x_batch)
             loss = -mll(output, y_batch)
         scaler2.scale(loss).backward()
-        print(f"Dispersion grad: {likelihood.raw_dispersion.grad}")
         scaler2.step(optimizer)
         scaler2.update()
         total_loss += loss.item()
