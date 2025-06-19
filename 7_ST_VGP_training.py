@@ -109,7 +109,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         mean_x = self.mean_module(covariate_x)
         mean_x = mean_x.clamp(min=-10.0, max=10.0)  # avoids very large exp()
         covar_x = self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
-        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-1 # add jitter to avoid numerical issues
+        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1.0 # add jitter to avoid numerical issues
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
