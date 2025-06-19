@@ -10,6 +10,7 @@ from torch.cuda.amp import autocast, GradScaler
 from sklearn.preprocessing import StandardScaler
 import joblib
 from torch.distributions import NegativeBinomial
+import torch.nn.functional as F
 
 # Load and preprocess the dataset
 print("Loading dataset...")
@@ -114,38 +115,71 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 
 # Negative Binomial Likelihood
 class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
-    def __init__(self, dispersion=1.0):
+    def __init__(self, init_log_dispersion=0.0):
         super().__init__()
-        self.raw_dispersion = torch.nn.Parameter(torch.tensor(float(dispersion)))
-        self.register_parameter(name="raw_dispersion", parameter=self.raw_dispersion)
-        self.register_constraint("raw_dispersion", gpytorch.constraints.Positive())
+        self.log_dispersion = torch.nn.Parameter(torch.tensor(init_log_dispersion))  # log(dispersion)
 
     @property
     def dispersion(self):
-        return self.raw_dispersion_constraint.transform(self.raw_dispersion)
+        # Use softplus to ensure positivity and prevent NaNs
+        return F.softplus(self.log_dispersion)
 
     def forward(self, function_samples, **kwargs):
         mu = function_samples.exp()
-        total_count = self.dispersion.float()
+        total_count = self.dispersion
         probs = total_count / (total_count + mu)
-        probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
+        probs = probs.clamp(min=1e-4, max=1 - 1e-4)  # avoid NaNs
         return NegativeBinomial(total_count=total_count, probs=probs)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
         mean = function_dist.mean.exp()
-        total_count = self.dispersion.float()
+        total_count = self.dispersion
         probs = total_count / (total_count + mean)
-        probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
+        probs = probs.clamp(min=1e-4, max=1 - 1e-4)
         dist = NegativeBinomial(total_count=total_count, probs=probs)
-        return dist.log_prob(target).sum(-1)
+        return dist.log_prob(target)
 
     def log_marginal(self, observations, function_dist, **kwargs):
         mean = function_dist.mean.exp()
-        total_count = self.dispersion.float()
+        total_count = self.dispersion
         probs = total_count / (total_count + mean)
-        probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
+        probs = probs.clamp(min=1e-4, max=1 - 1e-4)
         dist = NegativeBinomial(total_count=total_count, probs=probs)
-        return dist.log_prob(observations).sum(-1)
+        return dist.log_prob(observations)
+
+# class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
+#     def __init__(self, dispersion=1.0):
+#         super().__init__()
+#         self.raw_dispersion = torch.nn.Parameter(torch.tensor(float(dispersion)))
+#         self.register_parameter(name="raw_dispersion", parameter=self.raw_dispersion)
+#         self.register_constraint("raw_dispersion", gpytorch.constraints.Positive())
+
+#     @property
+#     def dispersion(self):
+#         return self.raw_dispersion_constraint.transform(self.raw_dispersion)
+
+#     def forward(self, function_samples, **kwargs):
+#         mu = function_samples.exp()
+#         total_count = self.dispersion.float()
+#         probs = total_count / (total_count + mu)
+#         probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
+#         return NegativeBinomial(total_count=total_count, probs=probs)
+
+#     def expected_log_prob(self, target, function_dist, **kwargs):
+#         mean = function_dist.mean.exp()
+#         total_count = self.dispersion.float()
+#         probs = total_count / (total_count + mean)
+#         probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
+#         dist = NegativeBinomial(total_count=total_count, probs=probs)
+#         return dist.log_prob(target).sum(-1)
+
+#     def log_marginal(self, observations, function_dist, **kwargs):
+#         mean = function_dist.mean.exp()
+#         total_count = self.dispersion.float()
+#         probs = total_count / (total_count + mean)
+#         probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
+#         dist = NegativeBinomial(total_count=total_count, probs=probs)
+#         return dist.log_prob(observations).sum(-1)
 
 # Move model and likelihood to GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -207,7 +241,7 @@ for i in tqdm(range(training_iterations)):
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
         print(f"Kernel lengthscale: {model.covariate_kernel.base_kernel.lengthscale.detach().cpu().numpy()}")
-        print("Dispersion gradient:", likelihood.raw_dispersion.grad)
+        print("Dispersion gradient:", likelihood.log_dispersion.grad)
 
 
 # Save the model
