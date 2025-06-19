@@ -183,7 +183,7 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
 # Move model and likelihood to GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-likelihood = NegativeBinomialLikelihood(dispersion=1.0).to(device)
+likelihood = NegativeBinomialLikelihood(init_log_dispersion=0.0).to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
 
 # Quick diagnose for kernel matrix
