@@ -37,8 +37,8 @@ y_counts = df_training['ground_truth'].values
 # Inducing Points Strategy (Density-based + Random)
 print("Selecting inducing points...")
 # Number of inducing points
-num_density_points = 100
-num_random_points = 20
+num_density_points = 240
+num_random_points = 60
 
 # Compute average counts per bounding box
 bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
@@ -78,7 +78,7 @@ inducing_points_np = np.hstack((Z_spatial, Z_temporal, Z_covariates))
 inducing_points = torch.tensor(scaler.transform(inducing_points_np), dtype=torch.float32)
 
 # Dataset and DataLoader for batching
-batch_size = 256
+batch_size = 512
 train_dataset = TensorDataset(train_x, train_y)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
@@ -92,15 +92,15 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         super(STVGPModel, self).__init__(variational_strategy)
 
         self.spatial_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2))
-        # self.temporal_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5))
-        # self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=7))
+        self.temporal_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5))
+        self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=7))
         self.mean_module = gpytorch.means.LinearMean(input_size=7)
         self.spatial_kernel.outputscale = 0.5
         self.spatial_kernel.base_kernel.lengthscale = 1.0
-        # self.temporal_kernel.outputscale = 0.5
-        # self.temporal_kernel.base_kernel.lengthscale = 1.0
-        # self.covariate_kernel.outputscale = 0.5
-        # self.covariate_kernel.base_kernel.lengthscale = 1.0
+        self.temporal_kernel.outputscale = 0.5
+        self.temporal_kernel.base_kernel.lengthscale = 1.0
+        self.covariate_kernel.outputscale = 0.5
+        self.covariate_kernel.base_kernel.lengthscale = 1.0
 
     def forward(self, x):
         spatial_x = x[:, :2]
@@ -108,8 +108,8 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
         mean_x = mean_x.clamp(min=-10.0, max=10.0)  # avoids very large exp()
-        covar_x = self.spatial_kernel(spatial_x)# * self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
-        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-2
+        covar_x = self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
+        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-2 # add jitter to avoid numerical issues
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
@@ -129,8 +129,7 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
         mu = function_samples.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
-        r = self.dispersion.expand_as(logits).float()
-        return torch.distributions.NegativeBinomial(total_count=r, logits=logits)
+        return torch.distributions.NegativeBinomial(total_count=r.expand(mu.shape), logits=logits)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
         mu = function_dist.mean.exp().clamp(min=1e-3, max=1e3)
@@ -273,7 +272,21 @@ likelihood = StableNegativeBinomialLikelihood().to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
 
 # Quick diagnose for kernel matrix
+with torch.no_grad():
+    # Evaluate kernels for your inducing points
+    x_sp = inducing_points[:, :2].to(device)
+    x_tm = inducing_points[:, 2:3].to(device)
+    x_cov = inducing_points[:, 3:].to(device)
 
+    Ks = model.spatial_kernel(x_sp)
+    Kt = model.temporal_kernel(x_tm)
+    Kc = model.covariate_kernel(x_cov)
+    K_prod = Ks.evaluate() * Kt.evaluate() * Kc.evaluate()
+    K_sum = Ks.evaluate() + Kt.evaluate() + Kc.evaluate()
+    K_hybrid = K_prod + K_sum
+    print("K_prod min:", K_prod.min().item(), "max:", K_prod.max().item(), "any NaN?", torch.isnan(K_prod).any().item())
+    print("K_sum min:", K_sum.min().item(), "max:", K_sum.max().item(), "any NaN?", torch.isnan(K_sum).any().item())
+    print("K_hybrid min:", K_hybrid.min().item(), "max:", K_hybrid.max().item(), "any NaN?", torch.isnan(K_hybrid).any().item())
 # with torch.no_grad():
 #     x_sp = inducing_points[:, :2].to(device)
 #     x_tm = inducing_points[:, 2:3].to(device)
