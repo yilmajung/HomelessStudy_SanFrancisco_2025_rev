@@ -36,7 +36,7 @@ y_counts = df_training['ground_truth'].values
 # Inducing Points Strategy (Density-based + Random)
 print("Selecting inducing points...")
 # Number of inducing points
-num_density_points = 400
+num_density_points = 300
 num_random_points = 100
 
 # Compute average counts per bounding box
