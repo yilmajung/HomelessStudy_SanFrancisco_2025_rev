@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.cuda.amp import autocast, GradScaler
 from sklearn.preprocessing import StandardScaler
 import joblib
-from torch.distributions import NegativeBinomial
+from torch.distributions import NegativeBinomial, constraints
 import torch.nn.functional as F
 
 # Load and preprocess the dataset
@@ -108,46 +108,85 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         temporal_x = x[:, 2:3]
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
+        mean_x = mean_x.clamp(min=-10.0, max=10.0)  # avoids very large exp()
         covar_x = self.spatial_kernel(spatial_x) + self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
         covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-3
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 # Negative Binomial Likelihood
-class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
-    def __init__(self, init_log_dispersion=0.0):
+class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
+    def __init__(self, init_dispersion=1.0):
         super().__init__()
-        raw_log_disp = torch.tensor(init_log_dispersion).float()
-        self.register_parameter("raw_log_dispersion", torch.nn.Parameter(raw_log_disp))
-        self.register_constraint("raw_log_dispersion", gpytorch.constraints.GreaterThan(-6.0))  # softer constraint
+        raw_disp = torch.tensor(init_dispersion).log().unsqueeze(0)
+        self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
+        self.register_constraint("raw_log_dispersion", constraints.real)
 
     @property
     def dispersion(self):
-        # Use softplus to ensure positivity and prevent NaNs
         return F.softplus(self.raw_log_dispersion)
 
     def forward(self, function_samples, **kwargs):
+        # Convert GP output to mean
         mu = function_samples.exp()
+        mu = mu.clamp(min=1e-3, max=1e3)  # avoid overflows
+
+        # Convert to total_count and probs
         total_count = self.dispersion
         probs = total_count / (total_count + mu)
-        probs = probs.clamp(min=1e-4, max=1 - 1e-4)  # avoid NaNs
+        probs = probs.clamp(min=1e-4, max=1 - 1e-4)
+
         return NegativeBinomial(total_count=total_count, probs=probs)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
         mean = function_dist.mean.exp()
+        mean = mean.clamp(min=1e-3, max=1e3)
+
         total_count = self.dispersion
         probs = total_count / (total_count + mean)
         probs = probs.clamp(min=1e-4, max=1 - 1e-4)
+
         dist = NegativeBinomial(total_count=total_count, probs=probs)
         return dist.log_prob(target)
 
     def log_marginal(self, observations, function_dist, **kwargs):
-        mean = function_dist.mean.exp()
-        total_count = self.dispersion
-        probs = total_count / (total_count + mean)
-        probs = probs.clamp(min=1e-4, max=1 - 1e-4)
-        dist = NegativeBinomial(total_count=total_count, probs=probs)
-        return dist.log_prob(observations)
+        return self.expected_log_prob(observations, function_dist, **kwargs)
+
+
+# class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
+#     def __init__(self, init_log_dispersion=0.0):
+#         super().__init__()
+#         raw_log_disp = torch.tensor(init_log_dispersion).float()
+#         self.register_parameter("raw_log_dispersion", torch.nn.Parameter(raw_log_disp))
+#         self.register_constraint("raw_log_dispersion", gpytorch.constraints.GreaterThan(-6.0))  # softer constraint
+
+#     @property
+#     def dispersion(self):
+#         # Use softplus to ensure positivity and prevent NaNs
+#         return F.softplus(self.raw_log_dispersion)
+
+#     def forward(self, function_samples, **kwargs):
+#         mu = function_samples.exp()
+#         total_count = self.dispersion
+#         probs = total_count / (total_count + mu)
+#         probs = probs.clamp(min=1e-4, max=1 - 1e-4)  # avoid NaNs
+#         return NegativeBinomial(total_count=total_count, probs=probs)
+
+#     def expected_log_prob(self, target, function_dist, **kwargs):
+#         mean = function_dist.mean.exp()
+#         total_count = self.dispersion
+#         probs = total_count / (total_count + mean)
+#         probs = probs.clamp(min=1e-4, max=1 - 1e-4)
+#         dist = NegativeBinomial(total_count=total_count, probs=probs)
+#         return dist.log_prob(target)
+
+#     def log_marginal(self, observations, function_dist, **kwargs):
+#         mean = function_dist.mean.exp()
+#         total_count = self.dispersion
+#         probs = total_count / (total_count + mean)
+#         probs = probs.clamp(min=1e-4, max=1 - 1e-4)
+#         dist = NegativeBinomial(total_count=total_count, probs=probs)
+#         return dist.log_prob(observations)
 
 # class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 #     def __init__(self, dispersion=1.0):
@@ -185,7 +224,7 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
 # Move model and likelihood to GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-likelihood = NegativeBinomialLikelihood(init_log_dispersion=0.0).to(device)
+likelihood = StableNegativeBinomialLikelihood(init_dispersion=1.0).to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
 
 # Quick diagnose for kernel matrix
