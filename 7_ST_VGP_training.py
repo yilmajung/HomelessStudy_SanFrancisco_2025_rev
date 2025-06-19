@@ -116,7 +116,8 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
     def __init__(self, dispersion=1.0):
         super().__init__()
-        self.register_parameter(name="raw_dispersion", parameter=torch.nn.Parameter(torch.tensor(dispersion)))
+        self.raw_dispersion = torch.nn.Parameter(torch.tensor(float(dispersion)))
+        self.register_parameter(name="raw_dispersion", parameter=self.raw_dispersion)
         self.register_constraint("raw_dispersion", gpytorch.constraints.Positive())
 
     @property
@@ -199,6 +200,7 @@ for i in tqdm(range(training_iterations)):
             output = model(x_batch)
             loss = -mll(output, y_batch)
         scaler2.scale(loss).backward()
+        print(f"Dispersion grad: {likelihood.raw_dispersion.grad}")
         scaler2.step(optimizer)
         scaler2.update()
         total_loss += loss.item()
