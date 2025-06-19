@@ -274,21 +274,21 @@ model = STVGPModel(inducing_points.to(device)).to(device)
 
 # Quick diagnose for kernel matrix
 
-with torch.no_grad():
-    x_sp = inducing_points[:, :2].to(device)
-    x_tm = inducing_points[:, 2:3].to(device)
-    x_cov = inducing_points[:, 3:].to(device)
+# with torch.no_grad():
+#     x_sp = inducing_points[:, :2].to(device)
+#     x_tm = inducing_points[:, 2:3].to(device)
+#     x_cov = inducing_points[:, 3:].to(device)
 
-    K_sp = model.spatial_kernel(x_sp).evaluate()
-    K_tm = model.temporal_kernel(x_tm).evaluate()
-    K_cov = model.covariate_kernel(x_cov).evaluate()
+#     K_sp = model.spatial_kernel(x_sp).evaluate()
+#     K_tm = model.temporal_kernel(x_tm).evaluate()
+#     K_cov = model.covariate_kernel(x_cov).evaluate()
 
-    K_total = K_sp + K_tm + K_cov
+#     K_total = K_sp + K_tm + K_cov
 
-    print("K_total min:", K_total.min().item())
-    print("K_total mean:", K_total.mean().item())
-    print("K_total diag min:", K_total.diag().min().item())
-    print("K_total is NaN:", torch.isnan(K_total).any().item())
+#     print("K_total min:", K_total.min().item())
+#     print("K_total mean:", K_total.mean().item())
+#     print("K_total diag min:", K_total.diag().min().item())
+#     print("K_total is NaN:", torch.isnan(K_total).any().item())
 
 model.train()
 likelihood.train()
