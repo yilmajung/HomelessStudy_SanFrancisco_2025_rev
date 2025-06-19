@@ -204,6 +204,9 @@ for i in tqdm(range(training_iterations)):
         total_loss += loss.item()
     if (i+1) % 10 == 0:
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
+        print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
+        print(f"Kernel lengthscale: {model.covariate_kernel.base_kernel.lengthscale.detach().cpu().numpy()}")
+
 
 # Save the model
 print("Saving model...")
