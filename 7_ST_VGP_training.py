@@ -78,7 +78,7 @@ inducing_points_np = np.hstack((Z_spatial, Z_temporal, Z_covariates))
 inducing_points = torch.tensor(scaler.transform(inducing_points_np), dtype=torch.float32)
 
 # Dataset and DataLoader for batching
-batch_size = 1024
+batch_size = 512
 train_dataset = TensorDataset(train_x, train_y)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
@@ -329,8 +329,11 @@ for i in tqdm(range(training_iterations)):
     if (i+1) % 10 == 0:
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
-        print(f"Kernel lengthscale: {model.covariate_kernel.base_kernel.lengthscale.detach().cpu().numpy()}")
         print("Dispersion gradient:", likelihood.raw_log_dispersion.grad)
+        print(f"Kernel lengthscale: {model.covariate_kernel.base_kernel.lengthscale.detach().cpu().numpy()}")
+        for n, p in model.named_parameters():
+            if p.grad is not None:
+                print(f"{n} grad norm: {p.grad.norm().item()}")
 
 
 # Save the model
