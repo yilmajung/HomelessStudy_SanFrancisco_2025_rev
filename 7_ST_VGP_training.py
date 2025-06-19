@@ -137,10 +137,10 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
         r = self.dispersion
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
 
-        r = self.dispersion + 0.0 * function_dist.mean.mean()  # force autograd to retain connection
-        r = r.expand_as(logits).float()
+        # r = self.dispersion + 0.0 * function_dist.mean.mean()  # force autograd to retain connection
+        # r = r.expand_as(logits).float()
 
-        dist = torch.distributions.NegativeBinomial(total_count=r, logits=logits)
+        dist = torch.distributions.NegativeBinomial(total_count=r.expand(mu.shape), logits=logits)
         return dist.log_prob(target)
 
     def log_marginal(self, observations, function_dist, **kwargs):
