@@ -102,7 +102,6 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         self.covariate_kernel.outputscale = 0.1
         self.covariate_kernel.base_kernel.lengthscale = 1.0
 
-
     def forward(self, x):
         spatial_x = x[:, :2]
         temporal_x = x[:, 2:3]
@@ -138,12 +137,27 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
         return NegativeBinomial(total_count=total_count, probs=probs)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
+        print("GP mean stats:")
+        print("  min:", function_dist.mean.min().item())
+        print("  max:", function_dist.mean.max().item())
+        print("  any NaN?", torch.isnan(function_dist.mean).any().item())
+
         mean = function_dist.mean.exp()
+        print("Exp(mean) stats:")
+        print("  min:", mean.min().item())
+        print("  max:", mean.max().item())
+        print("  any NaN?", torch.isnan(mean).any().item())
+
         mean = mean.clamp(min=1e-3, max=1e3)
 
         total_count = self.dispersion
         probs = total_count / (total_count + mean)
         probs = probs.clamp(min=1e-4, max=1 - 1e-4)
+
+        print("Probs stats:")
+        print("  min:", probs.min().item())
+        print("  max:", probs.max().item())
+        print("  any NaN?", torch.isnan(probs).any().item())
 
         dist = NegativeBinomial(total_count=total_count, probs=probs)
         return dist.log_prob(target)
