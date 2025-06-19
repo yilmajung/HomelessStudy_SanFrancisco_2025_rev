@@ -120,7 +120,6 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
         super().__init__()
         raw_disp = torch.tensor(init_dispersion).log().unsqueeze(0)
         self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
-        self.register_constraint("raw_log_dispersion", constraints.real)
 
     @property
     def dispersion(self):
