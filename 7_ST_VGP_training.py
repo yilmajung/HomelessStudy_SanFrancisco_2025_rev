@@ -37,8 +37,8 @@ y_counts = df_training['ground_truth'].values
 # Inducing Points Strategy (Density-based + Random)
 print("Selecting inducing points...")
 # Number of inducing points
-num_density_points = 400
-num_random_points = 100
+num_density_points = 100
+num_random_points = 20
 
 # Compute average counts per bounding box
 bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
@@ -78,7 +78,7 @@ inducing_points_np = np.hstack((Z_spatial, Z_temporal, Z_covariates))
 inducing_points = torch.tensor(scaler.transform(inducing_points_np), dtype=torch.float32)
 
 # Dataset and DataLoader for batching
-batch_size = 512
+batch_size = 256
 train_dataset = TensorDataset(train_x, train_y)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
@@ -108,7 +108,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
         mean_x = mean_x.clamp(min=-10.0, max=10.0)  # avoids very large exp()
-        covar_x = self.spatial_kernel(spatial_x) + self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
+        covar_x = self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
         covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-3
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
@@ -117,7 +117,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
     def __init__(self):
         super().__init__()
-        raw_disp = torch.tensor(np.log(np.exp(2.0) - 1)).unsqueeze(0)  # inverse softplus(3.0)
+        raw_disp = torch.tensor(np.log(np.exp(1.0) - 1)).unsqueeze(0)  # inverse softplus(3.0)
         self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
 
 
@@ -345,3 +345,8 @@ joblib.dump(scaler, 'scaler.pkl')
 # Save inducing points
 print("Saving inducing points...")
 torch.save(inducing_points, 'inducing_points.pt')
+
+
+# what to do:
+# try multiplication of kernels with smaller batch size
+# report the results of all the nan values to chatgpt
