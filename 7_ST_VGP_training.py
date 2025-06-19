@@ -117,8 +117,9 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
     def __init__(self, init_dispersion=1.0):
         super().__init__()
-        raw_disp = torch.tensor([2.0], dtype=torch.float32).log()  # larger starting value
+        raw_disp = torch.tensor(np.log(np.exp(3.0) - 1)).unsqueeze(0)  # inverse softplus(3.0)
         self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
+
 
     @property
     def dispersion(self):
@@ -126,18 +127,18 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
     def forward(self, function_samples, **kwargs):
         mu = function_samples.exp().clamp(min=1e-3, max=1e3)
-        r = self.dispersion
+        r = self.dispersion.expand_as(logits).float()
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
         return torch.distributions.NegativeBinomial(total_count=r, logits=logits)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
         mu = function_dist.mean.exp().clamp(min=1e-3, max=1e3)
-        r = self.dispersion
+        r = self.dispersion.expand_as(logits).float()
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
 
-        print("Logits stats - min:", logits.min().item(), 
-              "max:", logits.max().item(), 
-              "any NaN?", torch.isnan(logits).any().item())
+        # print("Logits stats - min:", logits.min().item(), 
+        #       "max:", logits.max().item(), 
+        #       "any NaN?", torch.isnan(logits).any().item())
         
         if torch.isnan(logits).any() or torch.isinf(logits).any():
             print("⚠️ Logits have NaNs or Infs!")
