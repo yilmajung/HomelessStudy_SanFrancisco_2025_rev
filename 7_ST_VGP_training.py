@@ -108,10 +108,17 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
         mean_x = mean_x.clamp(min=-10.0, max=10.0)  # avoids very large exp()
-        covar_x = self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x)
+        # Combine kernels
+        Ks = self.spatial_kernel(spatial_x)
+        Kt = self.temporal_kernel(temporal_x)
+        Kc = self.covariate_kernel(covariate_x)
+        Kconst = gpytorch.kernels.ConstantKernel(1.0, batch_shape=Ks.batch_shape)
+
+        covar_x = Ks * Kt * Kc + Ks + Kt + Kc + Kconst
         covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-1 # add jitter to avoid numerical issues
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
 
 # Negative Binomial Likelihood
 class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
@@ -278,11 +285,11 @@ with torch.no_grad():
     x_tm = inducing_points[:, 2:3].to(device)
     x_cov = inducing_points[:, 3:].to(device)
 
-    Ks = model.spatial_kernel(x_sp)
-    Kt = model.temporal_kernel(x_tm)
-    Kc = model.covariate_kernel(x_cov)
-    K_prod = Ks.evaluate() * Kt.evaluate() * Kc.evaluate()
-    K_sum = Ks.evaluate() + Kt.evaluate() + Kc.evaluate()
+    Ks2 = model.spatial_kernel(x_sp)
+    Kt2 = model.temporal_kernel(x_tm)
+    Kc2 = model.covariate_kernel(x_cov)
+    K_prod = Ks2.evaluate() * Kt2.evaluate() * Kc2.evaluate()
+    K_sum = Ks2.evaluate() + Kt2.evaluate() + Kc2.evaluate()
     K_hybrid = K_prod + K_sum
     print("K_prod min:", K_prod.min().item(), "max:", K_prod.max().item(), "any NaN?", torch.isnan(K_prod).any().item())
     print("K_sum min:", K_sum.min().item(), "max:", K_sum.max().item(), "any NaN?", torch.isnan(K_sum).any().item())
