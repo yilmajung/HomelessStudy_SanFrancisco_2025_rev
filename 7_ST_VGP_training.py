@@ -359,6 +359,11 @@ optimizer = torch.optim.Adam([
     {'params': likelihood.parameters()},
 ], lr=0.01)
 
+print("Optimizer parameter groups:")
+for i, group in enumerate(optimizer.param_groups):
+    print(f"Group {i}: {[p.shape for p in group['params']]}")
+
+
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
 
 scaler2 = GradScaler()
