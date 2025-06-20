@@ -408,7 +408,7 @@ assert not torch.isinf(inducing_points).any(), "inducing_points contain Infs"
 
 # Training loop with AMP and mini-batching
 print("Starting training...")
-for i in range(training_iterations):
+for i in tqdm(range(training_iterations)):
     total_loss = 0
     for x_batch, y_batch in train_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
