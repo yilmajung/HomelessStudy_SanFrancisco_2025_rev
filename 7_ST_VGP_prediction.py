@@ -112,6 +112,7 @@ likelihood.eval()
 print("Loading test data...")
 df = pd.read_csv("~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/df_cleaned_20250617.csv")
 df_test = df[df['ground_truth'].isna()].copy()
+print(f"Test data shape: {df_test.shape}")
 
 # Parse lat/lon and timestamp
 df_test['latitude'] = df_test['center_latlon'].apply(lambda x: str(x.split(', ')[0]))
@@ -140,8 +141,8 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), autocast():
     for (x_batch,) in tqdm(test_loader):
         x_batch = x_batch.to(device)
         preds = likelihood(model(x_batch))
-        mean_batch = preds.mean.cpu().numpy()
-        stddev_batch = preds.stddev.cpu().numpy()
+        mean_batch = preds.mean.cpu().numpy().reshape(-1)
+        stddev_batch = preds.stddev.cpu().numpy().reshape(-1)
         all_means.append(mean_batch)
         all_stddevs.append(stddev_batch)
 
