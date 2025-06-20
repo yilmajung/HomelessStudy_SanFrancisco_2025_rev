@@ -143,13 +143,12 @@ print("Expected number of batches:", num_batches)
 all_means, all_stddevs = [], []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for batch_num, (x_batch,) in enumerate(tqdm(test_loader)):
+    for (x_batch,) in tqdm(test_loader):
+        print("x_batch.shape:", x_batch.shape)
         x_batch = x_batch.to(device)
         preds = likelihood(model(x_batch))
         mean_batch = preds.mean.cpu().numpy().reshape(-1)
         stddev_batch = preds.stddev.cpu().numpy().reshape(-1)
-        print(f"Batch {batch_num}: mean_batch shape {mean_batch.shape}")
-
         all_means.append(mean_batch)
         all_stddevs.append(stddev_batch)
 
