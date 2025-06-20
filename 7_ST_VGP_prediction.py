@@ -134,20 +134,31 @@ batch_size = 512
 test_dataset = TensorDataset(test_x_scaled)
 test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
+print("Test set size:", len(test_x_scaled))
+print("Batch size:", batch_size)
+num_batches = int(np.ceil(len(test_x_scaled) / batch_size))
+print("Expected number of batches:", num_batches)
+
+
 all_means, all_stddevs = [], []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for (x_batch,) in tqdm(test_loader):
+    for batch_num, (x_batch,) in enumerate(tqdm(test_loader)):
         x_batch = x_batch.to(device)
         preds = likelihood(model(x_batch))
         mean_batch = preds.mean.cpu().numpy().reshape(-1)
         stddev_batch = preds.stddev.cpu().numpy().reshape(-1)
+        print(f"Batch {batch_num}: mean_batch shape {mean_batch.shape}")
+
         all_means.append(mean_batch)
         all_stddevs.append(stddev_batch)
 
 predicted_counts = np.concatenate(all_means)
 predicted_std = np.concatenate(all_stddevs)
 
+print("Total number of batches:", len(all_means))
+print("Total predicted elements:", sum([arr.shape[0] for arr in all_means]))
+print("====================")
 print("Predicted counts shape:", predicted_counts.shape)
 print("Predicted std shape:", predicted_std.shape)
 print("df_test shape:", df_test.shape)
