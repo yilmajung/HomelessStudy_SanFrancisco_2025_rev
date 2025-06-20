@@ -425,8 +425,3 @@ joblib.dump(scaler, 'scaler.pkl')
 # Save inducing points
 print("Saving inducing points...")
 torch.save(inducing_points, 'inducing_points.pt')
-
-
-Optimizer parameter groups:
-Group 0: [torch.Size([300, 10]), torch.Size([300]), torch.Size([300, 300]), torch.Size([]), torch.Size([1, 2]), torch.Size([]), torch.Size([1, 1]), torch.Size([]), torch.Size([1, 7]), torch.Size([7, 1]), torch.Size([1]), torch.Size([]), torch.Size([1])]
-Group 1: [torch.Size([])]
