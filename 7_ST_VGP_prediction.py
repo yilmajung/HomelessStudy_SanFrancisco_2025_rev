@@ -147,8 +147,9 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         print("x_batch.shape:", x_batch.shape)
         x_batch = x_batch.to(device)
         preds = likelihood(model(x_batch))
-        mean_batch = preds.mean.cpu().numpy().reshape(-1)
-        stddev_batch = preds.stddev.cpu().numpy().reshape(-1)
+        mean_batch = preds.mean.cpu().numpy()
+        print("mean_batch.shape:", mean_batch.shape)
+        stddev_batch = preds.stddev.cpu().numpy()
         all_means.append(mean_batch)
         all_stddevs.append(stddev_batch)
 
