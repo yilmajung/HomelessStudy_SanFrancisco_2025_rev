@@ -2,11 +2,15 @@ import torch
 import gpytorch
 import numpy as np
 import pandas as pd
-from torch.utils.data import DataLoader, TensorDataset
-from torch.cuda.amp import autocast
-import joblib
+from sklearn.cluster import KMeans
 from tqdm import tqdm
-from torch.distributions import NegativeBinomial
+import re
+from torch.utils.data import DataLoader, TensorDataset
+from torch.cuda.amp import autocast, GradScaler
+from sklearn.preprocessing import StandardScaler
+import joblib
+from torch.distributions import NegativeBinomial, constraints
+import torch.nn.functional as F
 
 # Set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,56 +39,68 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         self.temporal_kernel.base_kernel.lengthscale = 1.0
         self.covariate_kernel.outputscale = 0.1
         self.covariate_kernel.base_kernel.lengthscale = 1.0
-
+        self.const_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.ConstantKernel())
 
     def forward(self, x):
         spatial_x = x[:, :2]
         temporal_x = x[:, 2:3]
         covariate_x = x[:, 3:]
         mean_x = self.mean_module(covariate_x)
-        covar_x = self.spatial_kernel(spatial_x) + self.temporal_kernel(temporal_x) + self.covariate_kernel(covariate_x) +\
-                  self.spatial_kernel(spatial_x) * self.temporal_kernel(temporal_x) * self.covariate_kernel(covariate_x)
-        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-2
+        mean_x = mean_x.clamp(min=-10.0, max=10.0)  # avoids very large exp()
+        # Combine kernels
+        Ks = self.spatial_kernel(spatial_x)
+        Kt = self.temporal_kernel(temporal_x)
+        Kc = self.covariate_kernel(covariate_x)
+        const_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.ConstantKernel())
+        Kconst = self.const_kernel(spatial_x)
+
+        covar_x = Ks * Kt * Kc + Ks + Kt + Kc + Kconst
+        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-3 # add jitter to avoid numerical issues
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 # Negative Binomial Likelihood
-class NegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
-    def __init__(self, dispersion=1.0):
+class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
+    def __init__(self, init_dispersion=1.0):
         super().__init__()
-        self.register_parameter(name="raw_dispersion", parameter=torch.nn.Parameter(torch.tensor(dispersion)))
-        self.register_constraint("raw_dispersion", gpytorch.constraints.Positive())
+        # Use log for better initialization, and ensure float32 for PyTorch
+        raw_disp = torch.tensor(np.log(np.exp(init_dispersion) - 1), dtype=torch.float32)
+        self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
 
     @property
     def dispersion(self):
-        return self.raw_dispersion_constraint.transform(self.raw_dispersion)
+        return F.softplus(self.raw_log_dispersion) + 1e-5  # Ensure strictly positive
 
     def forward(self, function_samples, **kwargs):
-        mu = function_samples.exp()
-        total_count = self.dispersion
-        probs = total_count / (total_count + mu)
-        probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
-        return NegativeBinomial(total_count=total_count, probs=probs)
+        function_samples = function_samples.clamp(min=-10, max=10)
+        mu = function_samples.exp().clamp(min=1e-3, max=1e3)
+        r = self.dispersion
+        logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+        if torch.isnan(logits).any() or torch.isinf(logits).any():
+            print("NaN/Inf detected in logits!", logits)
+        if torch.isnan(mu).any() or torch.isinf(mu).any():
+            print("NaN/Inf detected in mu!", mu)
+        if torch.isnan(r).any() or torch.isinf(r).any():
+            print("NaN/Inf detected in dispersion!", r)
+        return torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
-        mean = function_dist.mean.exp()
-        total_count = self.dispersion
-        probs = total_count / (total_count + mean)
-        probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
-        dist = NegativeBinomial(total_count=total_count, probs=probs)
-        return dist.log_prob(target).sum(-1)
-
-    def log_marginal(self, observations, function_dist, **kwargs):
-        mean = function_dist.mean.exp()
-        total_count = self.dispersion
-        probs = total_count / (total_count + mean)
-        probs = probs.clamp(min=1e-6, max=1-1e-6)  # Avoid numerical issues
-        dist = NegativeBinomial(total_count=total_count, probs=probs)
-        return dist.log_prob(observations).sum(-1)
+        mean = function_dist.mean.clamp(min=-10, max=10)
+        mu = mean.exp().clamp(min=1e-3, max=1e3)
+        r = self.dispersion
+        logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+        if torch.isnan(logits).any() or torch.isinf(logits).any():
+            print("NaN/Inf detected in logits!", logits)
+        if torch.isnan(mu).any() or torch.isinf(mu).any():
+            print("NaN/Inf detected in mu!", mu)
+        if torch.isnan(r).any() or torch.isinf(r).any():
+            print("NaN/Inf detected in dispersion!", r)
+        dist = torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
+        return dist.log_prob(target)
 
 # Load model and likelihood
 model = STVGPModel(inducing_points).to(device)
-likelihood = NegativeBinomialLikelihood().to(device)
+likelihood = StableNegativeBinomialLikelihood().to(device)
 
 model.load_state_dict(torch.load("stvgp_model.pth"))
 likelihood.load_state_dict(torch.load("stvgp_likelihood.pth"))
@@ -114,7 +130,7 @@ test_x_scaled = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32)
 
 # Predict with uncertainty
 print("Running predictions...")
-batch_size = 1024
+batch_size = 512
 test_dataset = TensorDataset(test_x_scaled)
 test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
@@ -136,56 +152,9 @@ df_test['predicted_counts'] = predicted_counts
 df_test['predicted_std'] = predicted_std
 
 # Save predictions
-df_test[['bboxid', 'predicted_counts', 'predicted_std']].to_csv(
+df_test[['bboxid', 'timestamp', 'predicted_counts', 'predicted_std']].to_csv(
     '~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/predictions_st_vgp.csv', 
     index=False
 )
 
 print("Prediction saved.")
-
-
-#############
-# Prediction
-print("Starting prediction...")
-model.eval()
-likelihood.eval()
-
-test_x_np = df_test[['latitude', 'longitude', 'timestamp', 'max','min','precipitation',
-                     'total_population','white_ratio','black_ratio','hh_median_income']].values
-
-test_x_scaled =  = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32)
-test_dataset = TensorDataset(test_x_scaled)
-test_loader = DataLoader(test_dataset, batch_size=batch_size)
-
-all_means = []
-all_stddevs = []
-
-with torch.no_grad(), gpytorch.settings.fast_pred_var(), autocast():
-    for (x_batch,) in tqdm(test_loader):
-        x_batch = x_batch.to(device)
-        latent_f = model(x_batch)
-        latent_mean = latent_f.mean
-        print("latent_mean stats:", latent_mean.min().item(), latent_mean.max().item(), torch.isnan(latent_mean).any().item())
-
-        # Safeguard exp before it's passed into the likelihood
-        if torch.isnan(latent_mean).any():
-            raise ValueError("NaN detected in latent function mean before applying exp")
-        
-        preds = likelihood(latent_f)
-        mean_batch = preds.mean.cpu().numpy()
-        stddev_batch = preds.stddev.cpu().numpy()
-
-        all_means.append(mean_batch)
-        all_stddevs.append(stddev_batch)
-
-predicted_counts = np.concatenate(all_means)
-predicted_std = np.concatenate(all_stddevs)
-
-df_test['predicted_counts'] = predicted_counts
-df_test['predicted_std'] = predicted_std
-
-# Save predictions with uncertainty
-df_test[['bboxid', 'timestamp', 'predicted_counts', 'predicted_std']].to_csv(
-    '~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/predictions_st_vgp.csv', 
-    index=False
-)

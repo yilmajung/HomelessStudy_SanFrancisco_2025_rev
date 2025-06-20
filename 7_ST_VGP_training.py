@@ -315,9 +315,8 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 
 # Move model and likelihood to GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-likelihood = StableNegativeBinomialLikelihood().to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
-
+likelihood = StableNegativeBinomialLikelihood().to(device)
 
 print("Spatial lengthscale:", model.spatial_kernel.base_kernel.lengthscale.data)
 print("Temporal lengthscale:", model.temporal_kernel.base_kernel.lengthscale.data)
