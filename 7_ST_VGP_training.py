@@ -37,8 +37,8 @@ y_counts = df_training['ground_truth'].values
 # Inducing Points Strategy (Density-based + Random)
 print("Selecting inducing points...")
 # Number of inducing points
-num_density_points = 240
-num_random_points = 60
+num_density_points = 400
+num_random_points = 100
 
 # Compute average counts per bounding box
 bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
@@ -410,13 +410,6 @@ for i in range(training_iterations):
         output = model(x_batch)
         loss = -mll(output, y_batch)
         loss.backward()
-
-        # Optional: print/check gradient norms and NaNs
-        print(f"Dispersion grad: {likelihood.raw_log_dispersion.grad}")
-        for n, p in model.named_parameters():
-            if p.grad is not None:
-                print(f"{n} grad norm: {p.grad.norm().item()}  (any NaN: {torch.isnan(p.grad).any().item()})")
-
         optimizer.step()
         total_loss += loss.item()
 
@@ -425,9 +418,6 @@ for i in range(training_iterations):
         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
 
 print("Training complete.")
-
-
-
 
 # for i in tqdm(range(training_iterations)):
 #     total_loss = 0
