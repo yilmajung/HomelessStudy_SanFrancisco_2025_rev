@@ -117,7 +117,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         Kconst = self.const_kernel(spatial_x)
 
         covar_x = Ks * Kt * Kc + Ks + Kt + Kc + Kconst
-        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-1 # add jitter to avoid numerical issues
+        covar_x = covar_x + torch.eye(covar_x.size(-1), device=x.device) * 1e-3 # add jitter to avoid numerical issues
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
@@ -160,6 +160,14 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
             print("NaN/Inf detected in dispersion!", r)
         dist = torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
         return dist.log_prob(target)
+
+
+print("Spatial lengthscale:", model.spatial_kernel.base_kernel.lengthscale.data)
+print("Temporal lengthscale:", model.temporal_kernel.base_kernel.lengthscale.data)
+print("Covariate lengthscale:", model.covariate_kernel.base_kernel.lengthscale.data)
+print("Spatial outputscale:", model.spatial_kernel.outputscale.data)
+print("Temporal outputscale:", model.temporal_kernel.outputscale.data)
+print("Covariate outputscale:", model.covariate_kernel.outputscale.data)
 
 
 # class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
@@ -320,15 +328,15 @@ likelihood = StableNegativeBinomialLikelihood().to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
 
 # Quick diagnose for kernel matrix
-with torch.no_grad():
-    x_batch = train_x[:32].to(device)
-    y_batch = train_y[:32].to(device)
-    output = model(x_batch)
-    print("Output mean:", output.mean)
-    print("Output covar diag:", output.covariance_matrix.diag())
-    print("Any NaN in output mean?", torch.isnan(output.mean).any().item())
-    print("Any NaN in output covar?", torch.isnan(output.covariance_matrix).any().item())
-    print("Any Inf in output covar?", torch.isinf(output.covariance_matrix).any().item())
+# with torch.no_grad():
+#     x_batch = train_x[:32].to(device)
+#     y_batch = train_y[:32].to(device)
+#     output = model(x_batch)
+#     print("Output mean:", output.mean)
+#     print("Output covar diag:", output.covariance_matrix.diag())
+#     print("Any NaN in output mean?", torch.isnan(output.mean).any().item())
+#     print("Any NaN in output covar?", torch.isnan(output.covariance_matrix).any().item())
+#     print("Any Inf in output covar?", torch.isinf(output.covariance_matrix).any().item())
 
 # with torch.no_grad():
 #     # Evaluate kernels for your inducing points
@@ -404,8 +412,8 @@ for i in range(training_iterations):
     total_loss = 0
     for x_batch, y_batch in train_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+        print("x_batch[:5]:", x_batch[:5])
         optimizer.zero_grad()
-        
         # Standard forward and backward (no AMP)
         output = model(x_batch)
         loss = -mll(output, y_batch)
