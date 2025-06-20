@@ -161,15 +161,6 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
         dist = torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
         return dist.log_prob(target)
 
-
-print("Spatial lengthscale:", model.spatial_kernel.base_kernel.lengthscale.data)
-print("Temporal lengthscale:", model.temporal_kernel.base_kernel.lengthscale.data)
-print("Covariate lengthscale:", model.covariate_kernel.base_kernel.lengthscale.data)
-print("Spatial outputscale:", model.spatial_kernel.outputscale.data)
-print("Temporal outputscale:", model.temporal_kernel.outputscale.data)
-print("Covariate outputscale:", model.covariate_kernel.outputscale.data)
-
-
 # class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 #     def __init__(self):
 #         super().__init__()
@@ -326,6 +317,14 @@ print("Covariate outputscale:", model.covariate_kernel.outputscale.data)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 likelihood = StableNegativeBinomialLikelihood().to(device)
 model = STVGPModel(inducing_points.to(device)).to(device)
+
+
+print("Spatial lengthscale:", model.spatial_kernel.base_kernel.lengthscale.data)
+print("Temporal lengthscale:", model.temporal_kernel.base_kernel.lengthscale.data)
+print("Covariate lengthscale:", model.covariate_kernel.base_kernel.lengthscale.data)
+print("Spatial outputscale:", model.spatial_kernel.outputscale.data)
+print("Temporal outputscale:", model.temporal_kernel.outputscale.data)
+print("Covariate outputscale:", model.covariate_kernel.outputscale.data)
 
 # Quick diagnose for kernel matrix
 # with torch.no_grad():
