@@ -321,20 +321,30 @@ model = STVGPModel(inducing_points.to(device)).to(device)
 
 # Quick diagnose for kernel matrix
 with torch.no_grad():
-    # Evaluate kernels for your inducing points
-    x_sp = inducing_points[:, :2].to(device)
-    x_tm = inducing_points[:, 2:3].to(device)
-    x_cov = inducing_points[:, 3:].to(device)
+    x_batch = train_x[:32].to(device)
+    y_batch = train_y[:32].to(device)
+    output = model(x_batch)
+    print("Output mean:", output.mean)
+    print("Output covar diag:", output.covariance_matrix.diag())
+    print("Any NaN in output mean?", torch.isnan(output.mean).any().item())
+    print("Any NaN in output covar?", torch.isnan(output.covariance_matrix).any().item())
+    print("Any Inf in output covar?", torch.isinf(output.covariance_matrix).any().item())
 
-    Ks2 = model.spatial_kernel(x_sp)
-    Kt2 = model.temporal_kernel(x_tm)
-    Kc2 = model.covariate_kernel(x_cov)
-    K_prod = Ks2.evaluate() * Kt2.evaluate() * Kc2.evaluate()
-    K_sum = Ks2.evaluate() + Kt2.evaluate() + Kc2.evaluate()
-    K_hybrid = K_prod + K_sum
-    print("K_prod min:", K_prod.min().item(), "max:", K_prod.max().item(), "any NaN?", torch.isnan(K_prod).any().item())
-    print("K_sum min:", K_sum.min().item(), "max:", K_sum.max().item(), "any NaN?", torch.isnan(K_sum).any().item())
-    print("K_hybrid min:", K_hybrid.min().item(), "max:", K_hybrid.max().item(), "any NaN?", torch.isnan(K_hybrid).any().item())
+# with torch.no_grad():
+#     # Evaluate kernels for your inducing points
+#     x_sp = inducing_points[:, :2].to(device)
+#     x_tm = inducing_points[:, 2:3].to(device)
+#     x_cov = inducing_points[:, 3:].to(device)
+
+#     Ks2 = model.spatial_kernel(x_sp)
+#     Kt2 = model.temporal_kernel(x_tm)
+#     Kc2 = model.covariate_kernel(x_cov)
+#     K_prod = Ks2.evaluate() * Kt2.evaluate() * Kc2.evaluate()
+#     K_sum = Ks2.evaluate() + Kt2.evaluate() + Kc2.evaluate()
+#     K_hybrid = K_prod + K_sum
+#     print("K_prod min:", K_prod.min().item(), "max:", K_prod.max().item(), "any NaN?", torch.isnan(K_prod).any().item())
+#     print("K_sum min:", K_sum.min().item(), "max:", K_sum.max().item(), "any NaN?", torch.isnan(K_sum).any().item())
+#     print("K_hybrid min:", K_hybrid.min().item(), "max:", K_hybrid.max().item(), "any NaN?", torch.isnan(K_hybrid).any().item())
 # with torch.no_grad():
 #     x_sp = inducing_points[:, :2].to(device)
 #     x_tm = inducing_points[:, 2:3].to(device)
@@ -359,26 +369,28 @@ optimizer = torch.optim.Adam([
     {'params': likelihood.parameters()},
 ], lr=0.01)
 
-print("Optimizer parameter groups and parameter names:")
-for i, group in enumerate(optimizer.param_groups):
-    print(f"\nGroup {i}:")
-    for p in group['params']:
-        # Loop through model and likelihood named_parameters to find name
-        found = False
-        for name, param in model.named_parameters():
-            if p is param:
-                print(f"  MODEL PARAM: {name}, shape={p.shape}")
-                found = True
-        for name, param in likelihood.named_parameters():
-            if p is param:
-                print(f"  LIKELIHOOD PARAM: {name}, shape={p.shape}, value={p.data.item()}")
-                found = True
-        if not found:
-            print(f"  UNKNOWN PARAM shape={p.shape}")
-
-
+# print("Optimizer parameter groups and parameter names:")
+# for i, group in enumerate(optimizer.param_groups):
+#     print(f"\nGroup {i}:")
+#     for p in group['params']:
+#         # Loop through model and likelihood named_parameters to find name
+#         found = False
+#         for name, param in model.named_parameters():
+#             if p is param:
+#                 print(f"  MODEL PARAM: {name}, shape={p.shape}")
+#                 found = True
+#         for name, param in likelihood.named_parameters():
+#             if p is param:
+#                 print(f"  LIKELIHOOD PARAM: {name}, shape={p.shape}, value={p.data.item()}")
+#                 found = True
+#         if not found:
+#             print(f"  UNKNOWN PARAM shape={p.shape}")
 
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
+
+loss = -mll(output, y_batch)
+print("Loss value:", loss.item())
+print("Is loss NaN?", torch.isnan(loss).item())
 
 scaler2 = GradScaler()
 training_iterations = 500
@@ -399,6 +411,8 @@ for i in tqdm(range(training_iterations)):
         with autocast(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.fast_computations(True):#, gpytorch.settings.cholesky_jitter(1e-3):
             output = model(x_batch)
             loss = -mll(output, y_batch)
+        print("Loss value:", loss.item())
+
         scaler2.scale(loss).backward()
         scaler2.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
