@@ -112,7 +112,6 @@ likelihood.eval()
 print("Loading test data...")
 df = pd.read_csv("~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/df_cleaned_20250617.csv")
 df_test = df[df['ground_truth'].isna()].copy()
-print(f"Test data shape: {df_test.shape}")
 
 # Parse lat/lon and timestamp
 df_test['latitude'] = df_test['center_latlon'].apply(lambda x: str(x.split(', ')[0]))
@@ -151,6 +150,11 @@ predicted_std = np.concatenate(all_stddevs)
 
 df_test['predicted_counts'] = predicted_counts
 df_test['predicted_std'] = predicted_std
+
+print("Predicted counts shape:", predicted_counts.shape)
+print("Predicted std shape:", predicted_std.shape)
+print("df_test shape:", df_test.shape)
+
 
 # Save predictions
 df_test[['bboxid', 'timestamp', 'predicted_counts', 'predicted_std']].to_csv(
