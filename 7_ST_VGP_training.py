@@ -388,9 +388,6 @@ optimizer = torch.optim.Adam([
 
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
 
-loss = -mll(output, y_batch)
-print("Loss value:", loss.item())
-print("Is loss NaN?", torch.isnan(loss).item())
 
 scaler2 = GradScaler()
 training_iterations = 500
@@ -403,31 +400,58 @@ assert not torch.isinf(inducing_points).any(), "inducing_points contain Infs"
 
 # Training loop with AMP and mini-batching
 print("Starting training...")
-for i in tqdm(range(training_iterations)):
+for i in range(training_iterations):
     total_loss = 0
     for x_batch, y_batch in train_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
         optimizer.zero_grad()
-        with autocast(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.fast_computations(True):#, gpytorch.settings.cholesky_jitter(1e-3):
-            output = model(x_batch)
-            loss = -mll(output, y_batch)
-        print("Loss value:", loss.item())
+        
+        # Standard forward and backward (no AMP)
+        output = model(x_batch)
+        loss = -mll(output, y_batch)
+        loss.backward()
 
-        scaler2.scale(loss).backward()
-        scaler2.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
-        torch.nn.utils.clip_grad_norm_(likelihood.parameters(), max_norm=10.0)
-        scaler2.step(optimizer)
-        scaler2.update()
+        # Optional: print/check gradient norms and NaNs
+        print(f"Dispersion grad: {likelihood.raw_log_dispersion.grad}")
+        for n, p in model.named_parameters():
+            if p.grad is not None:
+                print(f"{n} grad norm: {p.grad.norm().item()}  (any NaN: {torch.isnan(p.grad).any().item()})")
+
+        optimizer.step()
         total_loss += loss.item()
+
     if (i+1) % 10 == 0:
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
-        print("Dispersion gradient:", likelihood.raw_log_dispersion.grad)
-        #print(f"Kernel lengthscale: {model.covariate_kernel.base_kernel.lengthscale.detach().cpu().numpy()}")
-        for n, p in model.named_parameters():
-            if p.grad is not None:
-                print(f"{n} grad norm: {p.grad.norm().item()}")
+
+print("Training complete.")
+
+
+
+
+# for i in tqdm(range(training_iterations)):
+#     total_loss = 0
+#     for x_batch, y_batch in train_loader:
+#         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+#         optimizer.zero_grad()
+#         with autocast(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.fast_computations(True):#, gpytorch.settings.cholesky_jitter(1e-3):
+#             output = model(x_batch)
+#             loss = -mll(output, y_batch)
+#         scaler2.scale(loss).backward()
+#         scaler2.unscale_(optimizer)
+#         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
+#         torch.nn.utils.clip_grad_norm_(likelihood.parameters(), max_norm=10.0)
+#         scaler2.step(optimizer)
+#         scaler2.update()
+#         total_loss += loss.item()
+#     if (i+1) % 10 == 0:
+#         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
+#         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
+#         print("Dispersion gradient:", likelihood.raw_log_dispersion.grad)
+#         #print(f"Kernel lengthscale: {model.covariate_kernel.base_kernel.lengthscale.detach().cpu().numpy()}")
+#         for n, p in model.named_parameters():
+#             if p.grad is not None:
+#                 print(f"{n} grad norm: {p.grad.norm().item()}")
 
 
 # Save the model
