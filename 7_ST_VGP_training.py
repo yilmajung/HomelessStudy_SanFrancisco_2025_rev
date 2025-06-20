@@ -395,8 +395,7 @@ optimizer = torch.optim.Adam([
 
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
 
-
-scaler2 = GradScaler()
+#scaler2 = GradScaler()
 training_iterations = 500
 
 # Quick check for NaN values
@@ -411,7 +410,6 @@ for i in tqdm(range(training_iterations)):
     total_loss = 0
     for x_batch, y_batch in train_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-        print("x_batch[:5]:", x_batch[:5])
         optimizer.zero_grad()
         # Standard forward and backward (no AMP)
         output = model(x_batch)
@@ -423,6 +421,7 @@ for i in tqdm(range(training_iterations)):
     if (i+1) % 10 == 0:
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
+        print("x_batch[:5]:", x_batch[:5])
 
 print("Training complete.")
 
