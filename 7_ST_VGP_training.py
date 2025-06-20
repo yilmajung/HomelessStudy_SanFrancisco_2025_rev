@@ -359,9 +359,23 @@ optimizer = torch.optim.Adam([
     {'params': likelihood.parameters()},
 ], lr=0.01)
 
-print("Optimizer parameter groups:")
+print("Optimizer parameter groups and parameter names:")
 for i, group in enumerate(optimizer.param_groups):
-    print(f"Group {i}: {[p.shape for p in group['params']]}")
+    print(f"\nGroup {i}:")
+    for p in group['params']:
+        # Loop through model and likelihood named_parameters to find name
+        found = False
+        for name, param in model.named_parameters():
+            if p is param:
+                print(f"  MODEL PARAM: {name}, shape={p.shape}")
+                found = True
+        for name, param in likelihood.named_parameters():
+            if p is param:
+                print(f"  LIKELIHOOD PARAM: {name}, shape={p.shape}, value={p.data.item()}")
+                found = True
+        if not found:
+            print(f"  UNKNOWN PARAM shape={p.shape}")
+
 
 
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
@@ -413,6 +427,6 @@ print("Saving inducing points...")
 torch.save(inducing_points, 'inducing_points.pt')
 
 
-# what to do:
-# try multiplication of kernels with smaller batch size
-# report the results of all the nan values to chatgpt
+Optimizer parameter groups:
+Group 0: [torch.Size([300, 10]), torch.Size([300]), torch.Size([300, 300]), torch.Size([]), torch.Size([1, 2]), torch.Size([]), torch.Size([1, 1]), torch.Size([]), torch.Size([1, 7]), torch.Size([7, 1]), torch.Size([1]), torch.Size([]), torch.Size([1])]
+Group 1: [torch.Size([])]
