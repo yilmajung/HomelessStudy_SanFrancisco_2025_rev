@@ -327,15 +327,15 @@ print("Temporal outputscale:", model.temporal_kernel.outputscale.data)
 print("Covariate outputscale:", model.covariate_kernel.outputscale.data)
 
 # Quick diagnose for kernel matrix
-# with torch.no_grad():
-#     x_batch = train_x[:32].to(device)
-#     y_batch = train_y[:32].to(device)
-#     output = model(x_batch)
-#     print("Output mean:", output.mean)
-#     print("Output covar diag:", output.covariance_matrix.diag())
-#     print("Any NaN in output mean?", torch.isnan(output.mean).any().item())
-#     print("Any NaN in output covar?", torch.isnan(output.covariance_matrix).any().item())
-#     print("Any Inf in output covar?", torch.isinf(output.covariance_matrix).any().item())
+with torch.no_grad():
+    x_batch = train_x[:32].to(device)
+    y_batch = train_y[:32].to(device)
+    output = model(x_batch)
+    print("Output mean:", output.mean)
+    print("Output covar diag:", output.covariance_matrix.diag())
+    print("Any NaN in output mean?", torch.isnan(output.mean).any().item())
+    print("Any NaN in output covar?", torch.isnan(output.covariance_matrix).any().item())
+    print("Any Inf in output covar?", torch.isinf(output.covariance_matrix).any().item())
 
 # with torch.no_grad():
 #     # Evaluate kernels for your inducing points
@@ -459,3 +459,12 @@ joblib.dump(scaler, 'scaler.pkl')
 # Save inducing points
 print("Saving inducing points...")
 torch.save(inducing_points, 'inducing_points.pt')
+
+
+
+Spatial lengthscale: tensor([[1., 1.]], device='cuda:0')
+Temporal lengthscale: tensor([[1.]], device='cuda:0')
+Covariate lengthscale: tensor([[1., 1., 1., 1., 1., 1., 1.]], device='cuda:0')
+Spatial outputscale: tensor(0.1000, device='cuda:0')
+Temporal outputscale: tensor(0.1000, device='cuda:0')
+Covariate outputscale: tensor(0.1000, device='cuda:0')
