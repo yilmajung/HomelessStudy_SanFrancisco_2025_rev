@@ -137,7 +137,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
 all_means, all_stddevs = [], []
 
-with torch.no_grad(), gpytorch.settings.fast_pred_var(), autocast():
+with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for (x_batch,) in tqdm(test_loader):
         x_batch = x_batch.to(device)
         preds = likelihood(model(x_batch))
