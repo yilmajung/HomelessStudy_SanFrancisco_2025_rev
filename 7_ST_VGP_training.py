@@ -124,35 +124,74 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 
 # Negative Binomial Likelihood
 class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
-    def __init__(self):
+    def __init__(self, init_dispersion=1.0):
         super().__init__()
-        raw_disp = torch.tensor(np.log(np.exp(1.0) - 1)).unsqueeze(0)  # inverse softplus(3.0)
+        # Use log for better initialization, and ensure float32 for PyTorch
+        raw_disp = torch.tensor(np.log(np.exp(init_dispersion) - 1), dtype=torch.float32)
         self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
-
 
     @property
     def dispersion(self):
-        return torch.nn.functional.softplus(self.raw_log_dispersion)
+        return F.softplus(self.raw_log_dispersion) + 1e-5  # Ensure strictly positive
 
     def forward(self, function_samples, **kwargs):
+        function_samples = function_samples.clamp(min=-10, max=10)
         mu = function_samples.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
-        return torch.distributions.NegativeBinomial(total_count=r.expand(mu.shape), logits=logits)
+        if torch.isnan(logits).any() or torch.isinf(logits).any():
+            print("NaN/Inf detected in logits!", logits)
+        if torch.isnan(mu).any() or torch.isinf(mu).any():
+            print("NaN/Inf detected in mu!", mu)
+        if torch.isnan(r).any() or torch.isinf(r).any():
+            print("NaN/Inf detected in dispersion!", r)
+        return torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
-        mu = function_dist.mean.exp().clamp(min=1e-3, max=1e3)
+        mean = function_dist.mean.clamp(min=-10, max=10)
+        mu = mean.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
-
-        # r = self.dispersion + 0.0 * function_dist.mean.mean()  # force autograd to retain connection
-        # r = r.expand_as(logits).float()
-
-        dist = torch.distributions.NegativeBinomial(total_count=r.expand(mu.shape), logits=logits)
+        if torch.isnan(logits).any() or torch.isinf(logits).any():
+            print("NaN/Inf detected in logits!", logits)
+        if torch.isnan(mu).any() or torch.isinf(mu).any():
+            print("NaN/Inf detected in mu!", mu)
+        if torch.isnan(r).any() or torch.isinf(r).any():
+            print("NaN/Inf detected in dispersion!", r)
+        dist = torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
         return dist.log_prob(target)
 
-    def log_marginal(self, observations, function_dist, **kwargs):
-        return self.expected_log_prob(observations, function_dist, **kwargs)
+
+# class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
+#     def __init__(self):
+#         super().__init__()
+#         raw_disp = torch.tensor(np.log(np.exp(1.0) - 1)).unsqueeze(0)  # inverse softplus(3.0)
+#         self.register_parameter(name="raw_log_dispersion", parameter=torch.nn.Parameter(raw_disp))
+
+
+#     @property
+#     def dispersion(self):
+#         return torch.nn.functional.softplus(self.raw_log_dispersion)
+
+#     def forward(self, function_samples, **kwargs):
+#         mu = function_samples.exp().clamp(min=1e-3, max=1e3)
+#         r = self.dispersion
+#         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+#         return torch.distributions.NegativeBinomial(total_count=r.expand(mu.shape), logits=logits)
+
+#     def expected_log_prob(self, target, function_dist, **kwargs):
+#         mu = function_dist.mean.exp().clamp(min=1e-3, max=1e3)
+#         r = self.dispersion
+#         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+
+#         # r = self.dispersion + 0.0 * function_dist.mean.mean()  # force autograd to retain connection
+#         # r = r.expand_as(logits).float()
+
+#         dist = torch.distributions.NegativeBinomial(total_count=r.expand(mu.shape), logits=logits)
+#         return dist.log_prob(target)
+
+#     def log_marginal(self, observations, function_dist, **kwargs):
+#         return self.expected_log_prob(observations, function_dist, **kwargs)
 
 # class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
 #     def __init__(self, init_dispersion=1.0):
