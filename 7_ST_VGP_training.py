@@ -459,12 +459,3 @@ joblib.dump(scaler, 'scaler.pkl')
 # Save inducing points
 print("Saving inducing points...")
 torch.save(inducing_points, 'inducing_points.pt')
-
-
-
-Spatial lengthscale: tensor([[1., 1.]], device='cuda:0')
-Temporal lengthscale: tensor([[1.]], device='cuda:0')
-Covariate lengthscale: tensor([[1., 1., 1., 1., 1., 1., 1.]], device='cuda:0')
-Spatial outputscale: tensor(0.1000, device='cuda:0')
-Temporal outputscale: tensor(0.1000, device='cuda:0')
-Covariate outputscale: tensor(0.1000, device='cuda:0')
