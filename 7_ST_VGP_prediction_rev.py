@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import joblib
 import re
+from tqdm import tqdm
 
 # Load the necessary files
 print("Loading saved artifacts...")
@@ -94,7 +95,7 @@ test_pred_lowers = []
 test_pred_uppers = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for i in range(0, test_x.size(0), batch_size):
+    for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = test_x[i:i+batch_size]
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
