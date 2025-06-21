@@ -128,6 +128,9 @@ test_x_np = df_test[['latitude', 'longitude', 'timestamp', 'max','min','precipit
 # Apply the same scaler used during training
 test_x_scaled = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32)
 
+print("test_x_scaled.shape:", test_x_scaled.shape)
+print("First row:", test_x_scaled[0])
+
 # Predict with uncertainty
 print("Running predictions...")
 batch_size = 512
@@ -147,9 +150,9 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         print("x_batch.shape:", x_batch.shape)
         x_batch = x_batch.to(device)
         preds = likelihood(model(x_batch))
-        mean_batch = preds.mean.cpu().numpy()
-        print("mean_batch.shape:", mean_batch.shape)
-        stddev_batch = preds.stddev.cpu().numpy()
+        mean_batch = preds.mean.cpu().numpy().T.reshape(-1)
+        #print("mean_batch.shape:", mean_batch.shape)
+        stddev_batch = preds.stddev.cpu().numpy().T.reshape(-1)
         all_means.append(mean_batch)
         all_stddevs.append(stddev_batch)
 
