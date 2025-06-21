@@ -105,12 +105,14 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         samples = pred_dist.sample((1000,))  # shape: [1000, batch_size]
         lower_pred = np.percentile(samples.cpu().numpy(), 2.5, axis=0)
         upper_pred = np.percentile(samples.cpu().numpy(), 97.5, axis=0)
+        print(mean_pred.shape, lower_pred.shape, upper_pred.shape)
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_pred)
         test_pred_uppers.append(upper_pred)
 
 
 # Concatenate batch predictions
+print([arr.shape for arr in test_pred_means])
 test_pred_mean = np.concatenate(test_pred_means)
 test_pred_lower = np.concatenate(test_pred_lowers)
 test_pred_upper = np.concatenate(test_pred_uppers)
