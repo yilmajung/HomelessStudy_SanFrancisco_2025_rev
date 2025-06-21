@@ -96,15 +96,18 @@ test_pred_uppers = []
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for i in range(0, test_x.size(0), batch_size):
         x_batch = test_x[i:i+batch_size]
-        preds = model(x_batch)
-        mean_log = preds.mean.clamp(min=-10, max=10)
-        lower_log, upper_log = preds.confidence_region()
-        lower_log = lower_log.clamp(min=-10, max=10)
-        upper_log = upper_log.clamp(min=-10, max=10)
-        # Convert log-mean to mean count (exp)
-        test_pred_means.append(mean_log.exp().cpu().numpy())
-        test_pred_lowers.append(lower_log.exp().cpu().numpy())
-        test_pred_uppers.append(upper_log.exp().cpu().numpy())
+        latent_dist = model(x_batch)
+        pred_dist = likelihood(latent_dist)
+        # Get predictive mean and quantiles
+        mean_pred = pred_dist.mean.cpu().numpy()
+        # 95% interval via sampling
+        samples = pred_dist.sample((1000,))  # shape: [1000, batch_size]
+        lower_pred = np.percentile(samples.cpu().numpy(), 2.5, axis=0)
+        upper_pred = np.percentile(samples.cpu().numpy(), 97.5, axis=0)
+        test_pred_means.append(mean_pred)
+        test_pred_lowers.append(lower_pred)
+        test_pred_uppers.append(upper_pred)
+
 
 # Concatenate batch predictions
 test_pred_mean = np.concatenate(test_pred_means)
