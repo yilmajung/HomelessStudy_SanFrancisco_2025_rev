@@ -147,7 +147,7 @@ all_means, all_stddevs = [], []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for (x_batch,) in tqdm(test_loader):
-        print("x_batch.shape:", x_batch.shape)
+        #print("x_batch.shape:", x_batch.shape)
         x_batch = x_batch.to(device)
         preds = likelihood(model(x_batch))
         mean_batch = preds.mean.cpu().numpy().T.reshape(-1)
