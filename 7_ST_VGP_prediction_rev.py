@@ -117,6 +117,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
         upper_pred = np.percentile(samples_np, 97.5, axis=0)
         mean_pred = samples_np.mean(axis=0)
 
+        print("mean_pred shape:", mean_pred.shape)
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_pred)
         test_pred_uppers.append(upper_pred)
