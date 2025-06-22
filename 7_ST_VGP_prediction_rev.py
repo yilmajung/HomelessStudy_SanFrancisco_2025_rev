@@ -103,8 +103,13 @@ test_pred_lowers = []
 test_pred_uppers = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
+    gpytorch.settings.fast_pred_var(), \
+    gpytorch.settings.num_likelihood_samples(1000), \
+    gpytorch.settings.num_samples(1):
+
     for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = test_x[i:i+batch_size]
+        print("Input batch shape:", x_batch.shape)
         latent_dist = model(x_batch, num_samples=1)
         pred_dist = likelihood(latent_dist)
         # Get predictive mean and quantiles
@@ -135,7 +140,3 @@ df_test['predicted_count_upper'] = test_pred_upper
 # Save results
 df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/homeless_tent_test_predictions.csv', index=False)
 print("Prediction complete. Results saved to 'homeless_tent_test_predictions.csv'.")
-
-
-torch.Size([1000, 10, 512])
-(10, 512) (10, 512) (10, 512)
