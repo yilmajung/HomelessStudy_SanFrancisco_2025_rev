@@ -106,7 +106,6 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
 
     for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = test_x[i:i+batch_size]
-        print("Input batch shape:", x_batch.shape)
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
         # Get predictive mean and quantiles
