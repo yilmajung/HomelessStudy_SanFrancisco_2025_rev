@@ -58,7 +58,7 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
         return torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
     
-     def expected_log_prob(self, target, function_dist, **kwargs):
+    def expected_log_prob(self, target, function_dist, **kwargs):
         mean = function_dist.mean.clamp(min=-10, max=10)
         mu = mean.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
