@@ -98,29 +98,30 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 # Predict in batches (if test set is large)
 print("Predicting...")
 batch_size = 512
+num_lik_samples = 1000
 test_pred_means = []
 test_pred_lowers = []
 test_pred_uppers = []
 
-with torch.no_grad(), gpytorch.settings.fast_pred_var():
 
+with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
     for i in tqdm(range(0, test_x.size(0), batch_size)):
-        x_batch = test_x[i:i+batch_size]
+        x_batch = test_x[i:i+batch_size]         
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
-        # Get predictive mean and quantiles
-        mean_pred = pred_dist.mean.cpu().numpy()
-        # 95% interval via sampling
-        samples = pred_dist.sample((1000,))  # shape: [1000, batch_size]
+        
+        samples = pred_dist.sample((num_lik_samples,))
         samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  # shape: [1000*10, batch_size]
+        
         lower_pred = np.percentile(samples_np, 2.5, axis=0)
         upper_pred = np.percentile(samples_np, 97.5, axis=0)
+        mean_pred = samples_np.mean(axis=0)
+
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_pred)
         test_pred_uppers.append(upper_pred)
 
 # Concatenate batch predictions
-print([arr.shape for arr in test_pred_means])
 test_pred_mean = np.concatenate(test_pred_means)
 test_pred_lower = np.concatenate(test_pred_lowers)
 test_pred_upper = np.concatenate(test_pred_uppers)
