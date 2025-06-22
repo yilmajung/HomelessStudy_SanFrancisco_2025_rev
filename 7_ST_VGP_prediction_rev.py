@@ -57,6 +57,14 @@ class StableNegativeBinomialLikelihood(gpytorch.likelihoods.Likelihood):
         r = self.dispersion
         logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
         return torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
+    
+     def expected_log_prob(self, target, function_dist, **kwargs):
+        mean = function_dist.mean.clamp(min=-10, max=10)
+        mu = mean.exp().clamp(min=1e-3, max=1e3)
+        r = self.dispersion
+        logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+        dist = torch.distributions.NegativeBinomial(total_count=r.expand_as(logits), logits=logits)
+        return dist.log_prob(target)
 
 # Instantiate and load trained parameters
 model = STVGPModel(inducing_points.to(device)).to(device)
@@ -103,6 +111,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         mean_pred = pred_dist.mean.cpu().numpy()
         # 95% interval via sampling
         samples = pred_dist.sample((1000,))  # shape: [1000, batch_size]
+        print(samples.shape)
         lower_pred = np.percentile(samples.cpu().numpy(), 2.5, axis=0)
         upper_pred = np.percentile(samples.cpu().numpy(), 97.5, axis=0)
         print(mean_pred.shape, lower_pred.shape, upper_pred.shape)
