@@ -103,9 +103,6 @@ test_pred_lowers = []
 test_pred_uppers = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    gpytorch.settings.fast_pred_var(), \
-    gpytorch.settings.num_likelihood_samples(1000), \
-    gpytorch.settings.num_samples(1)
 
     for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = test_x[i:i+batch_size]
@@ -116,14 +113,12 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         mean_pred = pred_dist.mean.cpu().numpy()
         # 95% interval via sampling
         samples = pred_dist.sample((1000,))  # shape: [1000, batch_size]
-        print(samples.shape)
-        lower_pred = np.percentile(samples.cpu().numpy(), 2.5, axis=0)
-        upper_pred = np.percentile(samples.cpu().numpy(), 97.5, axis=0)
-        print(mean_pred.shape, lower_pred.shape, upper_pred.shape)
+        samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  # shape: [1000*10, batch_size]
+        lower_pred = np.percentile(samples_np, 2.5, axis=0)
+        upper_pred = np.percentile(samples_np, 97.5, axis=0)
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_pred)
         test_pred_uppers.append(upper_pred)
-
 
 # Concatenate batch predictions
 print([arr.shape for arr in test_pred_means])
