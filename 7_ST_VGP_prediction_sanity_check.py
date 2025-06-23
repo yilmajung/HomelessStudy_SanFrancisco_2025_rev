@@ -24,7 +24,8 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         self.spatial_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2))
         self.temporal_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5))
         self.covariate_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=7))
-        self.mean_module = gpytorch.means.LinearMean(input_size=7)
+        self.mean_module = gpytorch.means.ZeroMean()  # Use ZeroMean for stability
+        #self.mean_module = gpytorch.means.LinearMean(input_size=7)
         self.const_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.ConstantKernel())
 
     def forward(self, x):
