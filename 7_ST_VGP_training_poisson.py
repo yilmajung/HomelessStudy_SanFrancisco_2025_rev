@@ -25,7 +25,7 @@ df['timestamp'] = pd.to_datetime(df['timestamp'])
 df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
 
 # Separate training data
-df_training = df.dropna(subset=['ground_truth']).iloc[:3000, :]  # Use only the first 3000 rows for training
+df_training = df.dropna(subset=['ground_truth'])
 df_test = df[df['ground_truth'].isna()]
 
 # Extract coordinates and covariates
