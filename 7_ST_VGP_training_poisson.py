@@ -199,6 +199,13 @@ for i in tqdm(range(training_iterations)):
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
 
 print("Training complete.")
+print("After Training Spatial lengthscale:", model.spatial_kernel.base_kernel.lengthscale.data)
+print("After Training Temporal lengthscale:", model.temporal_kernel.base_kernel.lengthscale.data)
+print("After Training Covariate lengthscale:", model.covariate_kernel.base_kernel.lengthscale.data)
+print("After Training Spatial outputscale:", model.spatial_kernel.outputscale.data)
+print("After Training Temporal outputscale:", model.temporal_kernel.outputscale.data)
+print("After Training Covariate outputscale:", model.covariate_kernel.outputscale.data)
+
 
 # Save the model
 # Save the model
