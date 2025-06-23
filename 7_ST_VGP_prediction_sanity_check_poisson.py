@@ -71,7 +71,7 @@ class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
 
 # Instantiate and load trained parameters
 model = STVGPModel(inducing_points.to(device)).to(device)
-likelihood = StableNegativeBinomialLikelihood().to(device)
+likelihood = PoissonLikelihood().to(device)
 model.load_state_dict(torch.load('stvgp_model_poisson.pth', map_location=device))
 likelihood.load_state_dict(torch.load('stvgp_likelihood_poisson.pth', map_location=device))
 
