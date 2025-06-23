@@ -72,9 +72,9 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood)
         log_mu = function_samples.clamp(min=-10, max=10)
         mu = log_mu.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
-        logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+        probs = r / (r + mu)
         return torch.distributions.NegativeBinomial(
-            total_count=r.expand_as(logits), logits=logits
+            total_count=r.expand_as(probs), probs=probs
         )
 
     def expected_log_prob(self, target, function_dist, **kwargs):
@@ -82,9 +82,9 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood)
         log_mu = function_dist.mean.clamp(min=-10, max=10)
         mu = log_mu.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
-        logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+        probs = r / (r + mu)
         dist = torch.distributions.NegativeBinomial(
-            total_count=r.expand_as(logits), logits=logits
+            total_count=r.expand_as(probs), probs=probs
         )
         return dist.log_prob(target)
 
@@ -111,6 +111,7 @@ df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta
 # Sanity Check with training data
 print("Sanity check with training data...")
 df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
+#df_test = df[df['ground_truth'].isna()]
 
 # Prepare test features
 spatial_coords = df_test[['latitude', 'longitude']].values
@@ -129,22 +130,40 @@ test_pred_lowers = []
 test_pred_uppers = []
 
 
-with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
+with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = test_x[i:i+batch_size]         
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
-        
+        mean_pred = pred_dist.mean.cpu().numpy()
         samples = pred_dist.sample((num_lik_samples,))
         samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  # shape: [1000*10, batch_size]
         
         lower_pred = np.percentile(samples_np, 2.5, axis=0)
         upper_pred = np.percentile(samples_np, 97.5, axis=0)
-        mean_pred = samples_np.mean(axis=0)
 
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_pred)
         test_pred_uppers.append(upper_pred)
+
+
+
+# with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
+#     for i in tqdm(range(0, test_x.size(0), batch_size)):
+#         x_batch = test_x[i:i+batch_size]         
+#         latent_dist = model(x_batch)
+#         pred_dist = likelihood(latent_dist)
+        
+#         samples = pred_dist.sample((num_lik_samples,))
+#         samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  # shape: [1000*10, batch_size]
+        
+#         lower_pred = np.percentile(samples_np, 2.5, axis=0)
+#         upper_pred = np.percentile(samples_np, 97.5, axis=0)
+#         mean_pred = samples_np.mean(axis=0)
+
+#         test_pred_means.append(mean_pred)
+#         test_pred_lowers.append(lower_pred)
+#         test_pred_uppers.append(upper_pred)
 
 # Concatenate batch predictions
 test_pred_mean = np.concatenate(test_pred_means)

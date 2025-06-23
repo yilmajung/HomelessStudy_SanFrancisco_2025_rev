@@ -26,7 +26,7 @@ df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta
 
 # Separate training data
 df_training = df.dropna(subset=['ground_truth'])
-df_test = df[df['ground_truth'].isna()]
+#df_test = df[df['ground_truth'].isna()]
 
 # Extract coordinates and covariates
 spatial_coords = df_training[['latitude', 'longitude']].values
@@ -37,8 +37,8 @@ y_counts = df_training['ground_truth'].values
 # Inducing Points Strategy (Density-based + Random)
 print("Selecting inducing points...")
 # Number of inducing points
-num_density_points = 400
-num_random_points = 100
+num_density_points = 250
+num_random_points = 250
 
 # Compute average counts per bounding box
 bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
@@ -140,9 +140,9 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood)
         log_mu = function_samples.clamp(min=-10, max=10)
         mu = log_mu.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
-        logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+        probs = r / (r + mu)
         return torch.distributions.NegativeBinomial(
-            total_count=r.expand_as(logits), logits=logits
+            total_count=r.expand_as(probs), probs=probs
         )
 
     def expected_log_prob(self, target, function_dist, **kwargs):
@@ -150,9 +150,9 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood)
         log_mu = function_dist.mean.clamp(min=-10, max=10)
         mu = log_mu.exp().clamp(min=1e-3, max=1e3)
         r = self.dispersion
-        logits = torch.log(mu + 1e-6) - torch.log(r + 1e-6)
+        probs = r / (r + mu)
         dist = torch.distributions.NegativeBinomial(
-            total_count=r.expand_as(logits), logits=logits
+            total_count=r.expand_as(probs), probs=probs
         )
         return dist.log_prob(target)
 
