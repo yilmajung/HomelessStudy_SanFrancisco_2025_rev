@@ -197,8 +197,6 @@ for i in tqdm(range(training_iterations)):
 
     if (i+1) % 10 == 0:
         print(f"Iteration {i+1}/{training_iterations}: Avg Loss = {total_loss:.3f}")
-        print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
-        print("x_batch[:5]:", x_batch[:5])
 
 print("Training complete.")
 
