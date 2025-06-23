@@ -37,8 +37,8 @@ y_counts = df_training['ground_truth'].values
 # Inducing Points Strategy (Density-based + Random)
 print("Selecting inducing points...")
 # Number of inducing points
-num_density_points = 250
-num_random_points = 250
+num_density_points = 100
+num_random_points = 400
 
 # Compute average counts per bounding box
 bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
@@ -220,7 +220,14 @@ for i in tqdm(range(training_iterations)):
         print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
         print("x_batch[:5]:", x_batch[:5])
 
+
 print("Training complete.")
+print("After Training Spatial lengthscale:", model.spatial_kernel.base_kernel.lengthscale.data)
+print("After Training Temporal lengthscale:", model.temporal_kernel.base_kernel.lengthscale.data)
+print("After Training Covariate lengthscale:", model.covariate_kernel.base_kernel.lengthscale.data)
+print("After Training Spatial outputscale:", model.spatial_kernel.outputscale.data)
+print("After Training Temporal outputscale:", model.temporal_kernel.outputscale.data)
+print("After Training Covariate outputscale:", model.covariate_kernel.outputscale.data)
 
 # Save the model
 print("Saving model...")
