@@ -90,7 +90,7 @@ df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta
 
 # Sanity Check with training data
 print("Sanity check with training data...")
-df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
+df_test = df.dropna(subset=['ground_truth']).iloc[:200, :] # actually this is the training data (only first 200 rows for quick sanity check)
 
 # Prepare test features
 spatial_coords = df_test[['latitude', 'longitude']].values
