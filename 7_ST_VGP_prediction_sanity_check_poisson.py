@@ -103,7 +103,7 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 # Predict in batches (if test set is large)
 print("Predicting...")
 batch_size = 512
-num_lik_samples = 10
+num_lik_samples = 100
 test_pred_means = []
 test_pred_lowers = []
 test_pred_uppers = []
@@ -115,7 +115,8 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
         
-        mean_pred = pred_dist.mean.cpu().numpy() 
+        mean_pred = pred_dist.mean.cpu().numpy()
+        mean_pred = mean_pred.mean(axis=0)
         samples = pred_dist.sample((num_lik_samples,))
         samples_np = samples.cpu().numpy().reshape(-1, samples.shape[-1])  # shape: [1000*10, batch_size]
         
