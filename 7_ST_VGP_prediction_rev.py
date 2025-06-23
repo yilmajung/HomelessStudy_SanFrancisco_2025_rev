@@ -98,7 +98,7 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 # Predict in batches (if test set is large)
 print("Predicting...")
 batch_size = 512
-num_lik_samples = 1000
+num_lik_samples = 100
 test_pred_means = []
 test_pred_lowers = []
 test_pred_uppers = []
