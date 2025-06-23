@@ -5,6 +5,7 @@ import pandas as pd
 import joblib
 import re
 from tqdm import tqdm
+import torch.nn.functional as F
 
 # Load the necessary files
 print("Loading saved artifacts...")

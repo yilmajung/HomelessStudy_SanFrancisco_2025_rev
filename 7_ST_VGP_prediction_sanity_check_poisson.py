@@ -5,6 +5,7 @@ import pandas as pd
 import joblib
 import re
 from tqdm import tqdm
+import torch.nn.functional as F
 
 # Load the necessary files
 print("Loading saved artifacts...")
@@ -73,7 +74,6 @@ class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
 model = STVGPModel(inducing_points.to(device)).to(device)
 likelihood = PoissonLikelihood().to(device)
 model.load_state_dict(torch.load('stvgp_model_poisson.pth', map_location=device))
-likelihood.load_state_dict(torch.load('stvgp_likelihood_poisson.pth', map_location=device))
 
 model.eval()
 likelihood.eval()
