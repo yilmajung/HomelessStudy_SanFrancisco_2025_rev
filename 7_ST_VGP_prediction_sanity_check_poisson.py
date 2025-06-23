@@ -115,12 +115,12 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
         
+        mean_pred = pred_dist.mean.cpu().numpy() 
         samples = pred_dist.sample((num_lik_samples,))
-        samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  # shape: [1000*10, batch_size]
+        samples_np = samples.cpu().numpy().reshape(-1, samples.shape[-1])  # shape: [1000*10, batch_size]
         
         lower_pred = np.percentile(samples_np, 2.5, axis=0)
         upper_pred = np.percentile(samples_np, 97.5, axis=0)
-        mean_pred = samples_np.mean(axis=0)
 
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_pred)
