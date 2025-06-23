@@ -127,15 +127,15 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
         test_pred_uppers.append(upper_pred)
 
 # Concatenate batch predictions
-test_pred_mean = np.concatenate(test_pred_means)
-test_pred_lower = np.concatenate(test_pred_lowers)
-test_pred_upper = np.concatenate(test_pred_uppers)
+test_pred_means = np.concatenate(test_pred_means)
+test_pred_lowers = np.concatenate(test_pred_lowers)
+test_pred_uppers = np.concatenate(test_pred_uppers)
 
 # Attach results to test dataframe
 df_test = df_test.reset_index(drop=True)
-df_test['predicted_count_mean'] = test_pred_mean
-df_test['predicted_count_lower'] = test_pred_lower
-df_test['predicted_count_upper'] = test_pred_upper
+df_test['predicted_count_mean'] = test_pred_means
+df_test['predicted_count_lower'] = test_pred_lowers
+df_test['predicted_count_upper'] = test_pred_uppers
 
 # Save results
 df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/sanity_check_results_poisson.csv', index=False)
