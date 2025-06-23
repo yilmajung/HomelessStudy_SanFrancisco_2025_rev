@@ -122,6 +122,10 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
         lower_pred = np.percentile(samples_np, 2.5, axis=0)
         upper_pred = np.percentile(samples_np, 97.5, axis=0)
 
+        print(f"mean_pred shape: {mean_pred.shape}")
+        print(f"lower_pred shape: {lower_pred.shape}")
+        print(f"upper_pred shape: {upper_pred.shape}")
+
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_pred)
         test_pred_uppers.append(upper_pred)
@@ -131,12 +135,16 @@ test_pred_means = np.concatenate(test_pred_means)
 test_pred_lowers = np.concatenate(test_pred_lowers)
 test_pred_uppers = np.concatenate(test_pred_uppers)
 
-# Attach results to test dataframe
-df_test = df_test.reset_index(drop=True)
-df_test['predicted_count_mean'] = test_pred_means
-df_test['predicted_count_lower'] = test_pred_lowers
-df_test['predicted_count_upper'] = test_pred_uppers
+print('mean: ', test_pred_means[:10])
+print('lower bound: ', test_pred_lowers[:10])
+print('upper bound: ', test_pred_uppers[:10])
 
-# Save results
-df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/sanity_check_results_poisson.csv', index=False)
-print("Sanity check complete. Results saved to 'sanity_check_results_poisson.csv'.")
+# # Attach results to test dataframe
+# df_test = df_test.reset_index(drop=True)
+# df_test['predicted_count_mean'] = test_pred_means
+# df_test['predicted_count_lower'] = test_pred_lowers
+# df_test['predicted_count_upper'] = test_pred_uppers
+
+# # Save results
+# df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/sanity_check_results_poisson.csv', index=False)
+# print("Sanity check complete. Results saved to 'sanity_check_results_poisson.csv'.")
