@@ -170,12 +170,16 @@ test_pred_mean = np.concatenate(test_pred_means)
 test_pred_lower = np.concatenate(test_pred_lowers)
 test_pred_upper = np.concatenate(test_pred_uppers)
 
-# Attach results to test dataframe
-df_test = df_test.reset_index(drop=True)
-df_test['predicted_count_mean'] = test_pred_mean
-df_test['predicted_count_lower'] = test_pred_lower
-df_test['predicted_count_upper'] = test_pred_upper
+print('mean: ', test_pred_means[:10])
+print('lower bound: ', test_pred_lowers[:10])
+print('upper bound: ', test_pred_uppers[:10])
 
-# Save results
-df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/sanity_check_results_nb.csv', index=False)
-print("Sanity check complete. Results saved to 'sanity_check_results_nb.csv'.")
+# # Attach results to test dataframe
+# df_test = df_test.reset_index(drop=True)
+# df_test['predicted_count_mean'] = test_pred_mean
+# df_test['predicted_count_lower'] = test_pred_lower
+# df_test['predicted_count_upper'] = test_pred_upper
+
+# # Save results
+# df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/sanity_check_results_nb.csv', index=False)
+# print("Sanity check complete. Results saved to 'sanity_check_results_nb.csv'.")
