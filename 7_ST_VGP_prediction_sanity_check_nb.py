@@ -142,6 +142,10 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         lower_pred = np.percentile(samples_np, 2.5, axis=0)
         upper_pred = np.percentile(samples_np, 97.5, axis=0)
 
+        print(f"mean_pred shape: {mean_pred.shape}")
+        print(f"lower_pred shape: {lower_pred.shape}")
+        print(f"upper_pred shape: {upper_pred.shape}")
+
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_pred)
         test_pred_uppers.append(upper_pred)
