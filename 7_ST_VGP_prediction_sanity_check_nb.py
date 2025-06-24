@@ -137,7 +137,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
         pred_dist = likelihood(latent_dist)
         mean_pred = pred_dist.mean.mean(dim=0).cpu().numpy()
         samples = pred_dist.sample((num_lik_samples,))
-        samples_np = samples.cpu().numpy()  #.reshape(-1, samples.size(-1))  
+        samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  
         
         lower_pred = np.percentile(samples_np, 2.5, axis=0)
         upper_pred = np.percentile(samples_np, 97.5, axis=0)
