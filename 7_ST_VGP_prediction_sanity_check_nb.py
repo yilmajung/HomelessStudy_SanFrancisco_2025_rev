@@ -130,14 +130,15 @@ test_pred_lowers = []
 test_pred_uppers = []
 
 
-with torch.no_grad(), gpytorch.settings.fast_pred_var():
+with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
+:
     for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = test_x[i:i+batch_size]         
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
-        mean_pred = pred_dist.mean.cpu().numpy()
+        mean_pred = pred_dist.mean.mean(dim=0).cpu().numpy()
         samples = pred_dist.sample((num_lik_samples,))
-        samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  # shape: [1000*10, batch_size]
+        samples_np = samples.cpu().numpy()  #.reshape(-1, samples.size(-1))  
         
         lower_pred = np.percentile(samples_np, 2.5, axis=0)
         upper_pred = np.percentile(samples_np, 97.5, axis=0)
@@ -174,9 +175,9 @@ test_pred_mean = np.concatenate(test_pred_means)
 test_pred_lower = np.concatenate(test_pred_lowers)
 test_pred_upper = np.concatenate(test_pred_uppers)
 
-print('mean: ', test_pred_means[:10])
-print('lower bound: ', test_pred_lowers[:10])
-print('upper bound: ', test_pred_uppers[:10])
+print('mean: ', test_pred_mean[:10])
+print('lower bound: ', test_pred_lower[:10])
+print('upper bound: ', test_pred_upper[:10])
 
 # # Attach results to test dataframe
 # df_test = df_test.reset_index(drop=True)
