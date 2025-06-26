@@ -273,11 +273,11 @@ def evaluate_params(params):
 # Define grid & run in parallel
 print("Starting cross-validation...")
 param_grid = {
-    "num_inducing_density": [20, 50],
-    "num_inducing_random": [20, 50],
-    "lr":            [1e-2, 1e-3],
+    "num_inducing_density": [100, 400],
+    "num_inducing_random": [100, 400],
+    "lr":            [1e-2],
     "outputscale":  [0.01, 0.1],
-    "train_iters":   [300],
+    "train_iters":   [200],
 }
 
 grid = list(ParameterGrid(param_grid))
