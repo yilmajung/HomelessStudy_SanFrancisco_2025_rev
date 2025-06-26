@@ -61,7 +61,7 @@ train_y_np = train_y_np.reshape(-1, 1)
 # Convert to PyTorch tensors
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 all_x = torch.from_numpy(train_x_np)
-all_y = torch.from_numpy(train_y_np).float()
+all_y = torch.from_numpy(train_y_np).float().squeeze(1)
 print(f"all_x shape: {all_x.shape}, all_y shape: {all_y.shape}")
 
 # Build CV splits
@@ -175,9 +175,9 @@ def evaluate_single_split(params, train_idx, val_idx):
 
     # prepare fold data
     X_tr = all_x[train_idx].to(device)
-    y_tr = all_y[train_idx].to(device)
+    y_tr = all_y[train_idx].long().to(device)
     X_va = all_x[val_idx].to(device)
-    y_va = all_y[val_idx].to(device)
+    y_va = all_y[val_idx].long().to(device)
     
 
     # Pick inducing points by density-based + random subset of X_tr
@@ -238,20 +238,23 @@ def evaluate_single_split(params, train_idx, val_idx):
         TensorDataset(X_va, y_va),batch_size=512, shuffle=False
     )
     model.eval(); lik.eval()
+
     preds, logps = [], []
-
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-        f_dist   = model(x_b)
-        p_dist   = lik(f_dist)
-        preds.append(p_dist.mean.cpu())
-        logps.append(lik.expected_log_prob(y_b, f_dist).cpu())
+        for x_b, y_b in val_loader:
+            f_dist = model(x_b)
+            p_dist = lik(f_dist)
+            preds.append(p_dist.mean.cpu())  
+            logps.append(lik.expected_log_prob(y_b, f_dist).cpu())
 
-    preds = torch.cat(preds).numpy()
-    logps = torch.cat(logps).numpy()
-    rmse = np.sqrt(np.mean(preds - y_va.cpu().numpy())**2)
+    preds = torch.cat(preds).numpy()    # shape [n_val,]
+    logps = torch.cat(logps).numpy()    # shape [n_val,]
+
+    true = y_va.cpu().numpy().ravel()       # flatten [n_val,1] → [n_val]
+    rmse = np.sqrt(np.mean( (preds - true)**2 )    
     nlpd = -np.mean(logps)
     
-    del model, lik, opt, mll, preds, logps
+    del model, lik, opt, mll, preds, logps, f_dist, p_dist
     torch.cuda.empty_cache()
 
     return rmse, nlpd
