@@ -235,7 +235,8 @@ def evaluate_single_split(params, train_idx, val_idx):
 # Wrap over ALL splits to get avg RMSE & avg NLPD for one hyper‐param combo
 def evaluate_params(params):
     rmse_list, nlpd_list = [], []
-    for train_idx, val_idx in combined_splits:
+    for train_idx, val_idx in tqdm(combined_splits, desc=f"CV folds ({params['num_inducing_density']} pts)",
+                                  leave=False):
         rmse, nlpd = evaluate_single_split(params, train_idx, val_idx)
         rmse_list.append(rmse)
         nlpd_list.append(nlpd)
