@@ -251,7 +251,7 @@ def evaluate_single_split(params, train_idx, val_idx):
     logps = torch.cat(logps).numpy()    # shape [n_val,]
 
     true = y_va.cpu().numpy().ravel()       # flatten [n_val,1] → [n_val]
-    rmse = np.sqrt(np.mean( (preds - true)**2 )    
+    rmse = np.sqrt(np.mean((preds-true)**2))    
     nlpd = -np.mean(logps)
     
     del model, lik, opt, mll, preds, logps, f_dist, p_dist
