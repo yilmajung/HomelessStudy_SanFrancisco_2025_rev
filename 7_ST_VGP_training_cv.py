@@ -1,3 +1,9 @@
+# Set up OPENBLAS and other threading environments
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
+os.environ["OMP_NUM_THREADS"]      = "4"
+os.environ["MKL_NUM_THREADS"]      = "4"
+
 import numpy as np
 import pandas as pd
 import torch
