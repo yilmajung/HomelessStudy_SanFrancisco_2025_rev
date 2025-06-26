@@ -218,7 +218,8 @@ def evaluate_single_split(params, train_idx, val_idx):
     
     # train for a small number of iters
     model.train(); lik.train()
-    for _ in range(params.get("train_iters", 200)):
+    for _ in tqdm(range(params.get("train_iters", 200))):
+        print(f"Training with params: {params}")
         total_loss = 0
         for x_b, y_b in train_loader:
             opt.zero_grad()
@@ -236,7 +237,8 @@ def evaluate_single_split(params, train_idx, val_idx):
 
     preds, logps = [], []
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-        for x_b, y_b in val_loader:
+        for x_b, y_b in tqdm(val_loader):
+            print(f"Evaluating batch: {x_b.shape}")
             f_dist = model(x_b)
             p_dist = lik(f_dist)
             preds.append(p_dist.mean.cpu())  
@@ -273,11 +275,11 @@ def evaluate_params(params):
 # Define grid & run in parallel
 print("Starting cross-validation...")
 param_grid = {
-    "num_inducing_density": [100, 400],
-    "num_inducing_random": [100, 400],
+    "num_inducing_density": [100],
+    "num_inducing_random": [100],
     "lr":            [1e-2],
-    "outputscale":  [0.01, 0.1],
-    "train_iters":   [200],
+    "outputscale":  [0.01],
+    "train_iters":   [100],
 }
 
 grid = list(ParameterGrid(param_grid))
