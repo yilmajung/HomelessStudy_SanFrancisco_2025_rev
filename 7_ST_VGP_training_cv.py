@@ -29,10 +29,6 @@ df['longitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[1]))
 df['latitude'] = df['latitude'].apply(lambda x: float(re.search(r'\d+.\d+', x).group()))
 df['longitude'] = df['longitude'].apply(lambda x: float(re.search(r'\-\d+.\d+', x).group()))
 df['timestamp'] = pd.to_datetime(df['timestamp'])
-df['year'] = df['timestamp'].dt.year
-df['month'] = df['timestamp'].dt.month
-df['day'] = df['timestamp'].dt.day
-df['timestamp_sec'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
 
 # Separate training data
 df_training = df.dropna(subset=['ground_truth'])
@@ -41,32 +37,17 @@ df_training = df.dropna(subset=['ground_truth'])
 # Compute average counts per bounding box
 bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
 
-# # Top k bounding boxes by density (tent count)
-# top_density_bboxes = bbox_counts.nlargest(num_inducing_density, 'ground_truth')['bboxid'].values
-
-# # Exclude already selected points and randomly choose 100 bounding boxes
-# remaining_bboxes = bbox_counts[~bbox_counts['bboxid'].isin(top_density_bboxes)]
-# random_bboxes = remaining_bboxes.sample(n=num_random_points, random_state=42)['bboxid'].values
-
-# # Combine both sets to form final inducing set (500 total)
-# inducing_bbox_ids = np.concatenate([top_density_bboxes, random_bboxes])
-# inducing_df = df_training[df_training['bboxid'].isin(inducing_bbox_ids)].drop_duplicates('bboxid')
-
-# # Extract coordinates
-# Z_spatial = inducing_df[['latitude','longitude']].values
-# Z_temporal = inducing_df[['timestamp_sec']].values
-# Z_covariates = inducing_df[['max','min','precipitation','total_population','white_ratio','black_ratio','hh_median_income']].values
-
 # Extract coordinates and covariates
 spatial_coords = df_training[['latitude', 'longitude']].values
-temporal_coords = df_training[['timestamp_sec']].values
+temporal_secs = ((df_training['timestamp'] - pd.Timestamp("1970-01-01")) 
+                   // pd.Timedelta("1s")).values
 X_covariates = df_training[['max','min','precipitation','total_population','white_ratio','black_ratio','hh_median_income']]
-y_counts = df_training['ground_truth'].values
+y_counts = df_training['ground_truth'].values.astype(np.float32)
 bboxids = df_training['bboxid'].values
 
 # Prepare training tensors
 print("Preparing training tensors...")
-train_x_np = np.hstack((spatial_coords, temporal_coords, X_covariates))
+train_x_np = np.hstack((spatial_coords, temporal_secs[:,None], X_covariates))
 train_y_np = y_counts
 
 # Normalize the data
@@ -77,7 +58,7 @@ train_y_np = train_y_np.reshape(-1, 1)
 # Convert to PyTorch tensors
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 all_x = torch.from_numpy(train_x_np)
-all_y = torch.from_numpy(train_y_np)
+all_y = torch.from_numpy(train_y_np).float()
 print(f"all_x shape: {all_x.shape}, all_y shape: {all_y.shape}")
 
 # Build CV splits
@@ -109,7 +90,7 @@ def make_spatial_splits(spatial_coords, n_blocks=5):
 
     return splits
 
-time_splits = make_time_forward_splits(temporal_coords, n_splits=3, horizon_days=365)
+time_splits = make_time_forward_splits(temporal_secs, n_splits=3, horizon_days=365)
 spatial_splits = make_spatial_splits(spatial_coords, n_blocks=5)
 
 # Combine time and spatial splits
@@ -198,14 +179,23 @@ def evaluate_single_split(params, train_idx, val_idx):
     # pick inducing points by density-based + random subset of X_tr
 
     # Compute average counts per bounding box
-    bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
+    train_bids = bboxids[train_idx]
+    train_vals = y_counts[train_idx]
+    fold_df = pd.DataFrame({
+        'bboxid': train_bids,
+        'count': train_vals
+    })
 
-    top_density_bboxes = bbox_counts.nlargest(num_inducing_density, 'ground_truth')['bboxid'].values
-    remaining_bboxes = bbox_counts[~bbox_counts['bboxid'].isin(top_density_bboxes)]
-    random_bboxes = remaining_bboxes.sample(n=num_inducing_random, random_state=42)['bboxid'].values
-    
-    idx = np.where(np.isin(bboxids, np.concatenate([top_density_bboxes, random_bboxes])))[0]
-    Z   = X_tr[idx].clone()
+    fold_counts = (fold_df.groupby('bboxid')['count'].mean().reset_index())
+
+    dens_bids = fold_counts.nlargest(num_inducing_density, 'count')['bboxid'].values
+    rem_bids = fold_counts[~fold_counts['bboxid'].isin(dens_bids)]
+    rand_bids = rem_bids.sample(n=num_inducing_random, random_state=42)['bboxid'].values
+    inducing_ids = np.concatenate([dens_bids, rand_bids])
+
+    mask = np.isin(train_bids, inducing_ids)
+    local_idx = np.where(mask)[0]
+    Z = X_tr[local_idx].clone()
 
     # build model & likelihood
     model, lik = make_stvgp_model(Z, outputscale)
