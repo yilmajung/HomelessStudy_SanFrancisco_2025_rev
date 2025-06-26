@@ -213,7 +213,7 @@ def evaluate_single_split(params, train_idx, val_idx):
     # Train with batching
     train_loader = DataLoader(
         TensorDataset(X_tr, y_tr),
-        batch_size=256, shuffle=True, drop_last=True
+        batch_size=128, shuffle=True, drop_last=True
     )
     
     # train for a small number of iters
@@ -275,18 +275,18 @@ def evaluate_params(params):
 # Define grid & run in parallel
 print("Starting cross-validation...")
 param_grid = {
-    "num_inducing_density": [100],
-    "num_inducing_random": [100],
+    "num_inducing_density": [100, 400],
+    "num_inducing_random": [100, 400],
     "lr":            [1e-2],
-    "outputscale":  [0.01],
-    "train_iters":   [100],
+    "outputscale":  [0.01, 0.1],
+    "train_iters":   [200],
 }
 
 grid = list(ParameterGrid(param_grid))
 print(f"Total combinations: {len(grid)}")
 
 with tqdm_joblib(tqdm(desc="Grid search", total=len(grid))):
-    results = Parallel(n_jobs=1)(
+    results = Parallel(n_jobs=4)(
         delayed(evaluate_params)(p) 
         for p in grid
 )
