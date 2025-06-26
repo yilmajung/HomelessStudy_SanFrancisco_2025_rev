@@ -1,5 +1,6 @@
 # Set up OPENBLAS and other threading environments
 import os
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "4"
 os.environ["OMP_NUM_THREADS"]      = "4"
 os.environ["MKL_NUM_THREADS"]      = "4"
@@ -74,8 +75,8 @@ train_y_np = train_y_np.reshape(-1, 1)
 
 # Convert to PyTorch tensors
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-all_x = torch.from_numpy(train_x_np).to(device)
-all_y = torch.from_numpy(train_y_np).to(device)
+all_x = torch.from_numpy(train_x_np)
+all_y = torch.from_numpy(train_y_np)
 print(f"all_x shape: {all_x.shape}, all_y shape: {all_y.shape}")
 
 # Build CV splits
@@ -188,10 +189,10 @@ def evaluate_single_split(params, train_idx, val_idx):
     outputscale = params["outputscale"]
 
     # prepare fold data
-    X_tr = all_x[train_idx]
-    y_tr = all_y[train_idx]
-    X_va = all_x[val_idx]
-    y_va = all_y[val_idx]
+    X_tr = all_x[train_idx].to(device)
+    y_tr = all_y[train_idx].to(device)
+    X_va = all_x[val_idx].to(device)
+    y_va = all_y[val_idx].to(device)
 
     # pick inducing points by density-based + random subset of X_tr
 
@@ -267,7 +268,7 @@ grid = list(ParameterGrid(param_grid))
 print(f"Total combinations: {len(grid)}")
 
 with tqdm_joblib(tqdm(desc="Grid search", total=len(grid))):
-    results = Parallel(n_jobs=2, verbose=10)(
+    results = Parallel(n_jobs=4, verbose=10)(
         delayed(evaluate_params)(p) 
         for p in grid
 )
