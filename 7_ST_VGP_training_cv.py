@@ -19,9 +19,6 @@ import re
 from tqdm import tqdm
 from tqdm_joblib import tqdm_joblib
 from torch.utils.data import DataLoader, TensorDataset
-from torch.cuda.amp import autocast, GradScaler
-
-
 
 # Load and preprocess the dataset
 print("Loading dataset...")
@@ -218,20 +215,16 @@ def evaluate_single_split(params, train_idx, val_idx):
     )
     
     # train for a small number of iters
-    scaler = GradScaler()
     model.train(); lik.train()
     for _ in range(params.get("train_iters", 200)):
         total_loss = 0
         for x_b, y_b in train_loader:
             opt.zero_grad()
-            with autocast():
-                out = model(x_b)
-                loss = -mll(out, y_b)
-            scaler.scale(loss).backward()
-            scaler.step(opt)
-            scaler.update()
+            out = model(x_b)
+            loss = -mll(out, y_b)
+            loss.backward()
+            opt.step()
             total_loss += loss.item()
-
 
     # evaluate
     val_loader = DataLoader(
