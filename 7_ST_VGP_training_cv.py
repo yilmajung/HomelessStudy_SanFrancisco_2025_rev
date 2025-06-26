@@ -271,13 +271,22 @@ def evaluate_params(params):
         "avg_nlpd": np.mean(nlpd_list),
     }
 
+# Wrapper to pin each process to a different GPU
+def evaluate_on_gpu(params, idx):
+    # Round-robin GPU assignment
+    gpu_ids = list(range(torch.cuda.device_count()))
+    n_gpus = len(gpu_ids)
+    device_id = gpu_ids[idx % n_gpus]
+    torch.cuda.set_device(device_id)
+    print(f"Process {idx} using GPU {device_id} for params: {params}")
+    return evaluate_params(params)
 
 # Define grid & run in parallel
-print("Starting cross-validation...")
+print("Starting cross-validation with GPU allocation")
 param_grid = {
     "num_inducing_density": [100, 400],
     "num_inducing_random": [100, 400],
-    "lr":            [1e-2],
+    "lr":            [1e-2, 1e-3],
     "outputscale":  [0.01, 0.1],
     "train_iters":   [200],
 }
@@ -286,10 +295,11 @@ grid = list(ParameterGrid(param_grid))
 print(f"Total combinations: {len(grid)}")
 
 with tqdm_joblib(tqdm(desc="Grid search", total=len(grid))):
-    results = Parallel(n_jobs=4)(
-        delayed(evaluate_params)(p) 
-        for p in grid
-)
+    # Launch exactly n_gpus parallel workers, each pinned to a GPU
+    results = Parallel(n_jobs=n_gpus, backend="loky", verbose=10)(
+        delayed(evaluate_on_gpu)(params, idx)
+        for idx, params in enumerate(grid)
+    )
 
 # Sort & inspect
 df_res = pd.DataFrame(results)
