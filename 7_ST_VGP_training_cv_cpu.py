@@ -56,7 +56,8 @@ train_x_np = StandardScaler().fit_transform(train_x_np).astype(np.float32)
 train_y_np = train_y_np.astype(np.float32).reshape(-1, 1)
 
 # Convert to PyTorch tensors
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 all_x = torch.from_numpy(train_x_np)
 all_y = torch.from_numpy(train_y_np).squeeze(1)
 assert all_x.dtype == torch.float32
@@ -173,10 +174,12 @@ def evaluate_single_split(params, train_idx, val_idx):
     outputscale = params["outputscale"]
 
     # prepare fold data
+    # Train on GPU
     X_tr = all_x[train_idx].to(device)
     y_tr = all_y[train_idx].long().to(device)
-    X_va = all_x[val_idx].to(device)
-    y_va = all_y[val_idx].long().to(device)
+    # Eval on CPU
+    X_va = all_x[val_idx]
+    y_va = all_y[val_idx].long()
     
 
     # Pick inducing points by density-based + random subset of X_tr
@@ -213,7 +216,7 @@ def evaluate_single_split(params, train_idx, val_idx):
     # Train with batching
     train_loader = DataLoader(
         TensorDataset(X_tr, y_tr),
-        batch_size=64, shuffle=True, drop_last=True
+        batch_size=128, shuffle=True, drop_last=True
     )
     
     # train for a small number of iters
@@ -230,19 +233,19 @@ def evaluate_single_split(params, train_idx, val_idx):
             total_loss += loss.item()
 
     # evaluate
-    val_loader = DataLoader(
-        TensorDataset(X_va, y_va),batch_size=128, shuffle=False
+    val_loader_cpu = DataLoader(
+        TensorDataset(X_va, y_va),batch_size=256, shuffle=False
     )
     model.eval(); lik.eval()
 
     preds, logps = [], []
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-        for x_b, y_b in tqdm(val_loader):
-            print(f"Evaluating batch: {x_b.shape}")
+        for x_b_cpu, y_b_cpu in tqdm(val_loader_cpu):
+            x_b = x_b_cpu.to(device)
             f_dist = model(x_b)
             p_dist = lik(f_dist)
             preds.append(p_dist.mean.cpu())  
-            logps.append(lik.expected_log_prob(y_b, f_dist).cpu())
+            logps.append(lik.expected_log_prob(y_b_cpu, f_dist).cpu())
 
     preds = torch.cat(preds).numpy()    # shape [n_val,]
     logps = torch.cat(logps).numpy()    # shape [n_val,]
@@ -284,11 +287,11 @@ def evaluate_on_gpu(params, idx):
 # Define grid & run in parallel
 print("Starting cross-validation with GPU allocation")
 param_grid = {
-    "num_inducing_density": [50, 100],
-    "num_inducing_random": [50, 100],
+    "num_inducing_density": [100, 400],
+    "num_inducing_random": [100, 400],
     "lr":            [1e-2, 1e-3],
     "outputscale":  [0.01, 0.1],
-    "train_iters":   [100],
+    "train_iters":   [200],
 }
 
 grid = list(ParameterGrid(param_grid))
