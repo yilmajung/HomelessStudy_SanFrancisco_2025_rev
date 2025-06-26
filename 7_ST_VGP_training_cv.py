@@ -214,7 +214,7 @@ def evaluate_single_split(params, train_idx, val_idx):
     # Train with batching
     train_loader = DataLoader(
         TensorDataset(X_tr, y_tr),
-        batch_size=512, shuffle=True, drop_last=True
+        batch_size=256, shuffle=True, drop_last=True
     )
     
     # train for a small number of iters
@@ -235,7 +235,7 @@ def evaluate_single_split(params, train_idx, val_idx):
 
     # evaluate
     val_loader = DataLoader(
-        TensorDataset(X_va, y_va),batch_size=512, shuffle=False
+        TensorDataset(X_va, y_va),batch_size=256, shuffle=False
     )
     model.eval(); lik.eval()
 
