@@ -7,6 +7,9 @@ from sklearn.model_selection import ParameterGrid
 from sklearn.metrics import mean_squared_error
 from joblib import Parallel, delayed
 from sklearn.preprocessing import StandardScaler
+import re
+from tqdm import tqdm
+from tqdm_joblib import tqdm_joblib
 
 # Load and preprocess the dataset
 print("Loading dataset...")
@@ -244,6 +247,7 @@ def evaluate_params(params):
 
 
 # Define grid & run in parallel
+print("Starting cross-validation...")
 param_grid = {
     "num_inducing_density": [100, 250, 500],
     "num_inducing_random": [100, 250, 500],
@@ -252,9 +256,13 @@ param_grid = {
     "train_iters":   [300],
 }
 
-results = Parallel(n_jobs=-1, verbose=10)(
-    delayed(evaluate_params)(p) 
-    for p in ParameterGrid(param_grid)
+grid = list(ParameterGrid(param_grid))
+print(f"Total combinations: {len(grid)}")
+
+with tqdm_joblib(tqdm(desc="Grid search", total=len(grid))):
+    results = Parallel(n_jobs=-1, verbose=10)(
+        delayed(evaluate_params)(p) 
+        for p in grid
 )
 
 # Sort & inspect
