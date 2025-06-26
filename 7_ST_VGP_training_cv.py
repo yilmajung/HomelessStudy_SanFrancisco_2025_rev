@@ -259,7 +259,7 @@ grid = list(ParameterGrid(param_grid))
 print(f"Total combinations: {len(grid)}")
 
 with tqdm_joblib(tqdm(desc="Grid search", total=len(grid))):
-    results = Parallel(n_jobs=1)(
+    results = Parallel(n_jobs=4)(
         delayed(evaluate_params)(p) 
         for p in grid
 )
