@@ -18,6 +18,10 @@ from sklearn.preprocessing import StandardScaler
 import re
 from tqdm import tqdm
 from tqdm_joblib import tqdm_joblib
+from torch.utils.data import DataLoader, TensorDataset
+from torch.cuda.amp import autocast, GradScaler
+
+
 
 # Load and preprocess the dataset
 print("Loading dataset...")
@@ -51,8 +55,7 @@ train_x_np = np.hstack((spatial_coords, temporal_secs[:,None], X_covariates))
 train_y_np = y_counts
 
 # Normalize the data
-scaler = StandardScaler()
-train_x_np = scaler.fit_transform(train_x_np)
+train_x_np = StandardScaler().fit_transform(train_x_np)
 train_y_np = train_y_np.reshape(-1, 1)
 
 # Convert to PyTorch tensors
@@ -175,9 +178,9 @@ def evaluate_single_split(params, train_idx, val_idx):
     y_tr = all_y[train_idx].to(device)
     X_va = all_x[val_idx].to(device)
     y_va = all_y[val_idx].to(device)
+    
 
-    # pick inducing points by density-based + random subset of X_tr
-
+    # Pick inducing points by density-based + random subset of X_tr
     # Compute average counts per bounding box
     train_bids = bboxids[train_idx]
     train_vals = y_counts[train_idx]
@@ -208,24 +211,48 @@ def evaluate_single_split(params, train_idx, val_idx):
     ], lr=lr)
     mll = gpytorch.mlls.VariationalELBO(lik, model, num_data=len(train_idx))
 
+    # Train with batching
+    train_loader = DataLoader(
+        TensorDataset(X_tr, y_tr),
+        batch_size=512, shuffle=True, drop_last=True
+    )
+    
     # train for a small number of iters
+    scaler = GradScaler()
     model.train(); lik.train()
     for _ in range(params.get("train_iters", 200)):
-        opt.zero_grad()
-        out = model(X_tr)
-        loss = -mll(out, y_tr)
-        loss.backward()
-        opt.step()
+        total_loss = 0
+        for x_b, y_b in train_loader:
+            opt.zero_grad()
+            with autocast():
+                out = model(x_b)
+                loss = -mll(out, y_b)
+            scaler.scale(loss).backward()
+            scaler.step(opt)
+            scaler.update()
+            total_loss += loss.item()
+
 
     # evaluate
+    val_loader = DataLoader(
+        TensorDataset(X_va, y_va),batch_size=512, shuffle=False
+    )
     model.eval(); lik.eval()
+    preds, logps = [], []
+
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-        f_dist   = model(X_va)
+        f_dist   = model(x_b)
         p_dist   = lik(f_dist)
-        mean_va  = p_dist.mean.cpu().numpy()
-        rmse     = np.sqrt(mean_squared_error(y_va.cpu().numpy(), mean_va))
-        logp_val = lik.expected_log_prob(y_va, f_dist)
-        nlpd     = -logp_val.mean().item()
+        preds.append(p_dist.mean.cpu())
+        logps.append(lik.expected_log_prob(y_b, f_dist).cpu())
+
+    preds = torch.cat(preds).numpy()
+    logps = torch.cat(logps).numpy()
+    rmse = np.sqrt(np.mean(preds - y_va.cpu().numpy())**2)
+    nlpd = -np.mean(logps)
+    
+    del model, lik, opt, mll, preds, logps
+    torch.cuda.empty_cache()
 
     return rmse, nlpd
 
