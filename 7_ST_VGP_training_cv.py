@@ -294,6 +294,10 @@ param_grid = {
 grid = list(ParameterGrid(param_grid))
 print(f"Total combinations: {len(grid)}")
 
+# Number of GPUs to use
+gpu_ids = list(range(torch.cuda.device_count()))
+n_gpus = len(gpu_ids)
+
 with tqdm_joblib(tqdm(desc="Grid search", total=len(grid))):
     # Launch exactly n_gpus parallel workers, each pinned to a GPU
     results = Parallel(n_jobs=n_gpus, backend="loky", verbose=10)(
