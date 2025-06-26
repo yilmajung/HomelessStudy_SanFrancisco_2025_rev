@@ -218,8 +218,7 @@ def evaluate_single_split(params, train_idx, val_idx):
     
     # train for a small number of iters
     model.train(); lik.train()
-    for _ in tqdm(range(params.get("train_iters", 200))):
-        print(f"Training with params: {params}")
+    for _ in tqdm(range(params.get("train_iters", 200)), desc=f"Training with params: {params}", leave=False):
         total_loss = 0
         for x_b, y_b in train_loader:
             opt.zero_grad()
@@ -237,8 +236,7 @@ def evaluate_single_split(params, train_idx, val_idx):
 
     preds, logps = [], []
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-        for x_b, y_b in tqdm(val_loader):
-            print(f"Evaluating batch: {x_b.shape}")
+        for x_b, y_b in tqdm(val_loader, desc=f"Evaluating batch: {x_b.shape}", leave=False):
             f_dist = model(x_b)
             p_dist = lik(f_dist)
             preds.append(p_dist.mean.cpu())  
