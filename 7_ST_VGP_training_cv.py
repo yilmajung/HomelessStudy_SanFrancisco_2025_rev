@@ -52,13 +52,15 @@ train_x_np = np.hstack((spatial_coords, temporal_secs[:,None], X_covariates))
 train_y_np = y_counts
 
 # Normalize the data
-train_x_np = StandardScaler().fit_transform(train_x_np)
-train_y_np = train_y_np.reshape(-1, 1)
+train_x_np = StandardScaler().fit_transform(train_x_np).astype(np.float32)
+train_y_np = train_y_np.astype(np.float32).reshape(-1, 1)
 
 # Convert to PyTorch tensors
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 all_x = torch.from_numpy(train_x_np)
-all_y = torch.from_numpy(train_y_np).float().squeeze(1)
+all_y = torch.from_numpy(train_y_np).squeeze(1)
+assert all_x.dtype == torch.float32
+assert all_y.dtype == torch.float32
 print(f"all_x shape: {all_x.shape}, all_y shape: {all_y.shape}")
 
 # Build CV splits
