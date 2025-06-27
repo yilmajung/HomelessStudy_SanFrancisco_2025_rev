@@ -234,20 +234,36 @@ def evaluate_single_split(params, train_idx, val_idx):
     )
     model.eval(); lik.eval()
 
-    preds, logps = [], []
+    sum_sq = 0.0
+    sum_logp = 0.0
+    total_n = 0
+
+    #preds, logps = [], []
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
         for x_b, y_b in tqdm(val_loader, desc=f"Evaluating batch: {x_b.shape}", leave=False):
+            
+            # move to device
+            x_b = x_b.to(device)
+            y_b = y_b.to(device)
             f_dist = model(x_b)
             p_dist = lik(f_dist)
-            preds.append(p_dist.mean.cpu())  
-            logps.append(lik.expected_log_prob(y_b, f_dist).cpu())
 
-    preds = torch.cat(preds).numpy()    # shape [n_val,]
-    logps = torch.cat(logps).numpy()    # shape [n_val,]
+            # get predictions and log-probs on CPU
+            preds = p_dist.mean.cpu().numpy()
+            logps = lik.expected_log_prob(y_b, f_dist).cpu().numpy()
 
-    true = y_va.cpu().numpy().ravel()       # flatten [n_val,1] → [n_val]
-    rmse = np.sqrt(np.mean((preds-true)**2))    
-    nlpd = -np.mean(logps)
+            # accumulate metrics
+            n = preds.shape[0]
+            sum_sq += ((preds - y_b.cpu().numpy())**2).sum()
+            sum_logp += logps.sum()
+            total_n += n
+
+            # preds.append(p_dist.mean.cpu())  
+            # logps.append(lik.expected_log_prob(y_b, f_dist).cpu())
+
+    # final metrics
+    rmse = np.sqrt(sum_sq / total_n)
+    nlpd = -sum_logp / total_n
     
     del model, lik, opt, mll, preds, logps, f_dist, p_dist
     torch.cuda.empty_cache()
