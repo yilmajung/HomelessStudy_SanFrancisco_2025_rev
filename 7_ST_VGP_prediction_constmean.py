@@ -10,7 +10,7 @@ import torch.nn.functional as F
 # Load the necessary files
 print("Loading saved artifacts...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-scaler = torch.load('scaler_nb_constmean.pkl')
+scaler = joblib.load('scaler_nb.pkl')
 inducing_points = torch.load('inducing_points_constmean.pt', map_location=device)
 
 # Define the model and likelihood classes exactly as in training
