@@ -110,16 +110,17 @@ class STVGPModel(gpytorch.models.ApproximateGP):
             gpytorch.kernels.ConstantKernel())
 
     def forward(self, x):
-        s = x[:, :2]
-        t = x[:, 2:3]
-        c = x[:, 3:]
-        mean_x = self.mean_module(None)
+        s, t, c = x[:, :2], x[:, 2:3], x[:, 3:]
+        # Constant mean uses covariates to determine batch shape
+        mean_x = self.mean_module(c)
+        mean_x = mean_x.clamp(min=-10.0, max=10.0)
         Ks = self.spatial_kernel(s)
         Kt = self.temporal_kernel(t)
         Kc = self.covariate_kernel(c)
         Kconst = self.const_kernel(s)
+
         covar = Ks * Kt * Kc + Ks + Kt + Kc + Kconst
-        covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3
+        covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
 class NBLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
