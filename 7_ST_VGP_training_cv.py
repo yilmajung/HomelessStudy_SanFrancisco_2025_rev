@@ -300,8 +300,8 @@ print("Starting cross-validation with GPU allocation")
 param_grid = {
     "num_inducing_density": [50, 100],
     "num_inducing_random": [50, 100],
-    "lr":            [1e-2, 1e-3],
-    "outputscale":  [0.01, 0.1],
+    "lr":            [1e-2],
+    "outputscale":  [0.1],
     "train_iters":   [100],
 }
 
