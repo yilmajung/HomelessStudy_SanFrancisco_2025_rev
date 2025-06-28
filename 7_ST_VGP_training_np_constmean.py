@@ -123,6 +123,44 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
+ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
+     def __init__(self, init_dispersion=1.0):
+         super().__init__()
+         raw_dispersion = torch.tensor(
+             np.log(np.exp(init_dispersion) - 1), 
+             dtype=torch.float32
+         )
+         self.register_parameter(
+             name="raw_log_dispersion", 
+             parameter=torch.nn.Parameter(raw_dispersion)
+         )
+
+     @property
+     def dispersion(self):
+         return F.softplus(self.raw_log_dispersion) + 1e-5
+
+     def forward(self, function_samples, **kwargs):
+         # tighter clamp to prevent extreme μ
+         log_mu = function_samples.clamp(min=-3, max=3)     # μ ≤ e³≈20
+         mu     = log_mu.exp().clamp(min=1e-3, max=50)       # hard-cap at 50
+         r      = self.dispersion
+         probs  = r / (r + mu)
+         return torch.distributions.NegativeBinomial(
+             total_count=r.expand_as(probs), probs=probs
+         )
+
+     def expected_log_prob(self, target, function_dist, **kwargs):
+         log_mu = function_dist.mean.clamp(min=-3, max=3)
+         mu     = log_mu.exp().clamp(min=1e-3, max=50)
+         r      = self.dispersion
+         probs  = r / (r + mu)
+         dist   = torch.distributions.NegativeBinomial(
+             total_count=r.expand_as(probs), probs=probs
+         )
+         return dist.log_prob(target)
+
+
+
 class NBLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
     def __init__(self, init_disp=1.0):
         super().__init__()
