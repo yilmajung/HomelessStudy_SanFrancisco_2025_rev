@@ -123,7 +123,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
- class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
+class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
      def __init__(self, init_dispersion=1.0):
          super().__init__()
          raw_dispersion = torch.tensor(
