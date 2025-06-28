@@ -69,10 +69,11 @@ t = np.hstack((spatial_coords, temporal_coords, X_covariates))
 y = y_counts.astype(np.float32)
 scaler = StandardScaler().fit(t)
 x_scaled = scaler.transform(t).astype(np.float32)
-torch.save(scaler, 'scaler_nb_constmean.pkl')
+joblib.dump(scaler, 'scaler_nb_constmean.joblib')
 
 # Compute log-mean for ConstantMean initialization
 log_y_mean = np.log(y.mean() + 1e-3).astype(np.float32)
+joblib.dump(log_y_mean, 'constant_mean_nb.pkl')
 
 # Prepare tensors
 train_x = torch.tensor(x_scaled, dtype=torch.float32)

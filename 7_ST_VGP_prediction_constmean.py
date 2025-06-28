@@ -8,26 +8,10 @@ from tqdm import tqdm
 import torch.nn.functional as F
 
 # Load the necessary files
-# Load and preprocess the dataset (same as training)
-print("Loading and prepping test data...")
-df = pd.read_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/df_cleaned_20250617.csv')
-y_mean    = df['ground_truth'].mean()
-constant_mean = float(np.log(y_mean + 1e-3))
-df['latitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[0]))
-df['longitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[1]))
-df['latitude'] = df['latitude'].apply(lambda x: float(re.search(r'\d+.\d+', x).group()))
-df['longitude'] = df['longitude'].apply(lambda x: float(re.search(r'\-\d+.\d+', x).group()))
-df['timestamp'] = pd.to_datetime(df['timestamp'])
-df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
-
-# # Sanity Check with training data
-# print("Sanity check with training data...")
-# df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
-df_test = df[df['ground_truth'].isna()]
-
 print("Loading saved artifacts...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-scaler = torch.load('scaler_nb_constmean.pkl', map_location='cpu')
+scaler = joblib.load('scaler_nb_constmean.joblib')
+constant_mean = joblib.load('constant_mean_nb.pkl')
 inducing_points = torch.load('inducing_points_constmean.pt', map_location=device)
 
 # Define the model and likelihood classes exactly as in training
@@ -104,6 +88,21 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood)
          )
          return dist.log_prob(target)
 
+# Load and preprocess the dataset (same as training)
+print("Loading and prepping test data...")
+df = pd.read_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/df_cleaned_20250617.csv')
+
+df['latitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[0]))
+df['longitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[1]))
+df['latitude'] = df['latitude'].apply(lambda x: float(re.search(r'\d+.\d+', x).group()))
+df['longitude'] = df['longitude'].apply(lambda x: float(re.search(r'\-\d+.\d+', x).group()))
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
+
+# # Sanity Check with training data
+# print("Sanity check with training data...")
+# df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
+df_test = df[df['ground_truth'].isna()]
 
 
 # Instantiate and load trained parameters
