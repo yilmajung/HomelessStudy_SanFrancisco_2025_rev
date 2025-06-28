@@ -288,7 +288,7 @@ def evaluate_params(params):
 # Wrapper to pin each process to a different GPU
 def evaluate_on_gpu(params, idx):
     # Round-robin GPU assignment
-    gpu_ids = [2, 3, 4, 5, 6, 7] #list(range(torch.cuda.device_count()))
+    gpu_ids = [0, 1, 2, 3, 4, 5, 6, 7] #list(range(torch.cuda.device_count()))
     n_gpus = len(gpu_ids)
     device_id = gpu_ids[idx % n_gpus]
     torch.cuda.set_device(device_id)
@@ -309,7 +309,7 @@ grid = list(ParameterGrid(param_grid))
 print(f"Total combinations: {len(grid)}")
 
 # Number of GPUs to use
-gpu_ids = [2, 3, 4, 5, 6, 7] #list(range(torch.cuda.device_count()))
+gpu_ids = [0, 1, 2, 3, 4, 5, 6, 7] #list(range(torch.cuda.device_count()))
 n_gpus = len(gpu_ids)
 
 with tqdm_joblib(tqdm(desc="Grid search", total=len(grid))):
