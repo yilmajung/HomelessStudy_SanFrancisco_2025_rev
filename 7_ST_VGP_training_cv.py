@@ -34,8 +34,8 @@ df['timestamp'] = pd.to_datetime(df['timestamp'])
 # Separate training data
 df_training = df.dropna(subset=['ground_truth'])
 #df_test = df[df['ground_truth'].isna()]
-# Just use a small subset for training
-df_training = df_training.sample(n=2000, random_state=42)
+# # Just use a small subset for training
+# df_training = df_training.sample(n=2000, random_state=42)
 
 # Compute average counts per bounding box
 bbox_counts = df_training.groupby('bboxid')['ground_truth'].mean().reset_index()
@@ -300,7 +300,7 @@ def evaluate_on_gpu(params, idx):
 # Define grid & run in parallel
 print("Starting cross-validation with GPU allocation")
 param_grid = {
-    "num_inducing_density": [50],
+    "num_inducing_density": [50, 100],
     "num_inducing_random": [50, 100],
     "lr":            [1e-2],
     "outputscale":  [0.1],
