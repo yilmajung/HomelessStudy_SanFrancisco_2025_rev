@@ -141,58 +141,58 @@ test_pred_uppers = []
 test_pred_lowers_90 = []
 test_pred_uppers_90 = []
 
-# with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
-
-#     for i in tqdm(range(0, test_x.size(0), batch_size)):
-#         x_batch = test_x[i:i+batch_size]
-#         latent = model(x_batch)
-#         pred_dist = likelihood(latent)
-        
-#         # 1) analytic mean
-#         mean_pred = pred_dist.mean.cpu().numpy()
-#         mean_pred_avg = mean_pred.mean(axis=0)        
-
-#         # 2) empirical quantiles
-#         samples = pred_dist.sample((num_lik_samples,))    # [S, B]
-#         print("samples.shape:", samples.shape)  # should be [num_lik_samples, batch_size]
-#         print("pred_dist.mean.shape:", pred_dist.mean.shape)  # should be [batch_size]
-
-#         samples_np = samples.cpu().numpy()
-#         lower_95 = np.percentile(samples_np, 2.5, axis=0)
-#         upper_95 = np.percentile(samples_np,97.5, axis=0)
-#         lower_90 = np.percentile(samples_np, 5.0, axis=0)
-#         upper_90 = np.percentile(samples_np,95.0, axis=0)
-
-#         test_pred_means.append(mean_pred_avg)
-#         test_pred_lowers.append(lower_95)
-#         test_pred_uppers.append(upper_95)
-#         test_pred_lowers_90.append(lower_90)
-#         test_pred_uppers_90.append(upper_90)
-
 with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
+
     for i in tqdm(range(0, test_x.size(0), batch_size)):
-        x_batch = test_x[i:i+batch_size]         
-        latent_dist = model(x_batch)
-        pred_dist = likelihood(latent_dist)
-        mean_pred = pred_dist.mean.mean(dim=0).cpu().numpy()
-        samples = pred_dist.sample((num_lik_samples,))
-        samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  
+        x_batch = test_x[i:i+batch_size]
+        latent = model(x_batch)
+        pred_dist = likelihood(latent)
         
-        lower_pred = np.percentile(samples_np, 2.5, axis=0)
-        upper_pred = np.percentile(samples_np, 97.5, axis=0)
+        # 1) analytic mean
+        mean_pred = pred_dist.mean.cpu().numpy()
+        #mean_pred_avg = mean_pred.mean(axis=0)        
 
-        lower_pred_90 = np.percentile(samples_np, 5.0, axis=0)
-        upper_pred_90 = np.percentile(samples_np, 95.0, axis=0)
+        # 2) empirical quantiles
+        samples = pred_dist.sample((num_lik_samples,))    # [S, B]
+        print("samples.shape:", samples.shape)  # should be [num_lik_samples, batch_size]
+        print("pred_dist.mean.shape:", pred_dist.mean.shape)  # should be [batch_size]
 
-        # print(f"mean_pred shape: {mean_pred.shape}")
-        # print(f"lower_pred shape: {lower_pred.shape}")
-        # print(f"upper_pred shape: {upper_pred.shape}")
+        samples_np = samples.cpu().numpy()
+        lower_95 = np.percentile(samples_np, 2.5, axis=0)
+        upper_95 = np.percentile(samples_np,97.5, axis=0)
+        lower_90 = np.percentile(samples_np, 5.0, axis=0)
+        upper_90 = np.percentile(samples_np,95.0, axis=0)
 
-        test_pred_means.append(mean_pred)
-        test_pred_lowers.append(lower_pred)
-        test_pred_uppers.append(upper_pred)
-        test_pred_lowers_90.append(lower_pred_90)
-        test_pred_uppers_90.append(upper_pred_90)
+        test_pred_means.append(mean_pred_avg)
+        test_pred_lowers.append(lower_95)
+        test_pred_uppers.append(upper_95)
+        test_pred_lowers_90.append(lower_90)
+        test_pred_uppers_90.append(upper_90)
+
+# with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
+#     for i in tqdm(range(0, test_x.size(0), batch_size)):
+#         x_batch = test_x[i:i+batch_size]         
+#         latent_dist = model(x_batch)
+#         pred_dist = likelihood(latent_dist)
+#         mean_pred = pred_dist.mean.mean(dim=0).cpu().numpy()
+#         samples = pred_dist.sample((num_lik_samples,))
+#         samples_np = samples.cpu().numpy().reshape(-1, samples.size(-1))  
+        
+#         lower_pred = np.percentile(samples_np, 2.5, axis=0)
+#         upper_pred = np.percentile(samples_np, 97.5, axis=0)
+
+#         lower_pred_90 = np.percentile(samples_np, 5.0, axis=0)
+#         upper_pred_90 = np.percentile(samples_np, 95.0, axis=0)
+
+#         # print(f"mean_pred shape: {mean_pred.shape}")
+#         # print(f"lower_pred shape: {lower_pred.shape}")
+#         # print(f"upper_pred shape: {upper_pred.shape}")
+
+#         test_pred_means.append(mean_pred)
+#         test_pred_lowers.append(lower_pred)
+#         test_pred_uppers.append(upper_pred)
+#         test_pred_lowers_90.append(lower_pred_90)
+#         test_pred_uppers_90.append(upper_pred_90)
 
 # Concatenate batch predictions
 test_pred_mean = np.concatenate(test_pred_means)
