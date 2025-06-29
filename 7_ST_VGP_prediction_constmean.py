@@ -159,7 +159,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         mean_all[offset:offset+B_i] = mu.cpu().numpy()
 
         # 2) Jointly sample S latent draws
-        f_samps = f_dist.rsample(sample_shape=torch.Size([num_samples]))  # (S, B)
+        f_samps = f_dist.rsample(sample_shape=torch.Size([num_lik_samples]))  # (S, B)
         log_mu_samps = f_samps.clamp(-3,3)
         mu_samps     = log_mu_samps.exp().clamp(1e-3, 50)
 
