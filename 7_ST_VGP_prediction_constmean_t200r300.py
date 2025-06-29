@@ -6,6 +6,7 @@ import joblib
 import re
 from tqdm import tqdm
 import torch.nn.functional as F
+from torch.utils.data import DataLoader, TensorDataset
 
 # Load the necessary files
 print("Loading saved artifacts...")
@@ -131,8 +132,12 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 
 # Predict in batches (if test set is large)
 print("Predicting...")
-batch_size = 500
+batch_size = 512
 num_lik_samples = 300
+
+test_loader = DataLoader(text_x, batch_size=batch_size, shuffle=False)
+print("Test set size:", len(test_x))
+
 test_pred_means = []
 test_pred_lowers = []
 test_pred_uppers = []
@@ -141,8 +146,10 @@ test_pred_uppers_90 = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
 
-    for i in tqdm(range(0, test_x.size(0), batch_size)):
-        x_batch = test_x[i:i+batch_size]
+    for x_batch in tqdm(test_loader, desc="Predicting batches"):
+        
+    # for i in tqdm(range(0, test_x.size(0), batch_size)):
+    #     x_batch = test_x[i:i+batch_size]
         x_batch = x_batch.to(device)
 
         f_dist = model(x_batch)
