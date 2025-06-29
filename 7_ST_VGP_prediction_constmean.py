@@ -112,7 +112,7 @@ df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta
 # df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
 df_test = df[df['ground_truth'].isna()]
 # Small subset for testing
-df_test = df_test.sample(n=1000, random_state=42).reset_index(drop=True)
+# df_test = df_test.sample(n=1000, random_state=42).reset_index(drop=True)
 
 
 # Instantiate and load trained parameters
