@@ -92,39 +92,98 @@ train_loader = DataLoader(train_ds, batch_size=512, shuffle=True)
 torch.manual_seed(0)
 class STVGPModel(gpytorch.models.ApproximateGP):
     def __init__(self, inducing_points, constant_mean):
-        var_dist = gpytorch.variational.CholeskyVariationalDistribution(inducing_points.size(0))
-        var_strat= gpytorch.variational.VariationalStrategy(
-            self, inducing_points, var_dist, learn_inducing_locations=True)
-        super().__init__(var_strat)
+        variational_dist = gpytorch.variational.CholeskyVariationalDistribution(
+            inducing_points.size(0)
+        )
+        variational_strat = gpytorch.variational.VariationalStrategy(
+            self, inducing_points, variational_dist, learn_inducing_locations=True
+        )
+        super().__init__(variational_strat)
 
+        # constant mean as before
         self.mean_module = gpytorch.means.ConstantMean()
-        # initialize constant to log mean of counts
         self.mean_module.constant.data.fill_(constant_mean)
 
-        self.spatial_kernel   = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2))
-        self.temporal_kernel  = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.MaternKernel(nu=1.5))
-        self.covariate_kernel = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.RBFKernel(ard_num_dims=X_covariates.shape[1]))
-        self.const_kernel     = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.ConstantKernel())
-        self.spatial_kernel.outputscale = gpytorch.priors.GammaPrior(2.0, 0.15)
-        self.temporal_kernel.outputscale = gpytorch.priors.GammaPrior(2.0, 0.15)
+        # 1) Spatial Kernel with strong priors
+        base_spatial = gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2)
+        self.spatial_kernel = gpytorch.kernels.ScaleKernel(base_spatial,
+            outputscale_prior=gpytorch.priors.GammaPrior(concentration=2.0, rate=20.0)  # E[outputscale]=0.1
+        )
+        # lengthscale prior on the base Matern
+        base_spatial.register_prior(
+            "lengthscale_prior",
+            gpytorch.priors.LogNormalPrior(loc=torch.log(torch.tensor(1.0)),
+                                          scale=torch.tensor(0.1)),
+            lambda m: m.lengthscale
+        )
 
-    def forward(self, x):
-        s, t, c = x[:, :2], x[:, 2:3], x[:, 3:]
-        # Constant mean uses covariates to determine batch shape
-        mean_x = self.mean_module(c)
-        mean_x = mean_x.clamp(min=-10.0, max=10.0)
-        Ks = self.spatial_kernel(s)
-        Kt = self.temporal_kernel(t)
-        Kc = self.covariate_kernel(c)
-        Kconst = self.const_kernel(s)
+        # 2) Temporal Kernel
+        base_temporal = gpytorch.kernels.MaternKernel(nu=1.5)
+        self.temporal_kernel = gpytorch.kernels.ScaleKernel(base_temporal,
+            outputscale_prior=gpytorch.priors.GammaPrior(2.0, 20.0)  # small temporal variance
+        )
+        base_temporal.register_prior(
+            "lengthscale_prior",
+            gpytorch.priors.LogNormalPrior(loc=torch.log(torch.tensor(1.0)),
+                                          scale=torch.tensor(0.1)),
+            lambda m: m.lengthscale
+        )
 
-        covar = Ks * Kt * Kc + Ks + Kt + Kc + Kconst
-        covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar)
+        # 3) Covariate Kernel
+        cov_dim = inducing_points.size(-1) - 3
+        base_cov = gpytorch.kernels.RBFKernel(ard_num_dims=cov_dim)
+        self.covariate_kernel = gpytorch.kernels.ScaleKernel(base_cov,
+            outputscale_prior=gpytorch.priors.GammaPrior(2.0, 20.0)
+        )
+        base_cov.register_prior(
+            "lengthscale_prior",
+            gpytorch.priors.LogNormalPrior(loc=torch.log(torch.tensor(1.0)),
+                                          scale=torch.tensor(0.1)),
+            lambda m: m.lengthscale
+        )
+
+        # optional constant kernel on space
+        self.const_kernel = gpytorch.kernels.ScaleKernel(
+            gpytorch.kernels.ConstantKernel(),
+            outputscale_prior=gpytorch.priors.GammaPrior(2.0, 50.0)
+        )
+
+
+# class STVGPModel(gpytorch.models.ApproximateGP):
+#     def __init__(self, inducing_points, constant_mean):
+#         var_dist = gpytorch.variational.CholeskyVariationalDistribution(inducing_points.size(0))
+#         var_strat= gpytorch.variational.VariationalStrategy(
+#             self, inducing_points, var_dist, learn_inducing_locations=True)
+#         super().__init__(var_strat)
+
+#         self.mean_module = gpytorch.means.ConstantMean()
+#         # initialize constant to log mean of counts
+#         self.mean_module.constant.data.fill_(constant_mean)
+
+#         self.spatial_kernel   = gpytorch.kernels.ScaleKernel(
+#             gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2))
+#         self.temporal_kernel  = gpytorch.kernels.ScaleKernel(
+#             gpytorch.kernels.MaternKernel(nu=1.5))
+#         self.covariate_kernel = gpytorch.kernels.ScaleKernel(
+#             gpytorch.kernels.RBFKernel(ard_num_dims=X_covariates.shape[1]))
+#         self.const_kernel     = gpytorch.kernels.ScaleKernel(
+#             gpytorch.kernels.ConstantKernel())
+#         self.spatial_kernel.outputscale = gpytorch.priors.GammaPrior(2.0, 0.15)
+#         self.temporal_kernel.outputscale = gpytorch.priors.GammaPrior(2.0, 0.15)
+
+#     def forward(self, x):
+#         s, t, c = x[:, :2], x[:, 2:3], x[:, 3:]
+#         # Constant mean uses covariates to determine batch shape
+#         mean_x = self.mean_module(c)
+#         mean_x = mean_x.clamp(min=-10.0, max=10.0)
+#         Ks = self.spatial_kernel(s)
+#         Kt = self.temporal_kernel(t)
+#         Kc = self.covariate_kernel(c)
+#         Kconst = self.const_kernel(s)
+
+#         covar = Ks * Kt * Kc + Ks + Kt + Kc + Kconst
+#         covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
+#         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
 class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
      def __init__(self, init_dispersion=1.0):
