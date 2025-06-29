@@ -239,7 +239,7 @@ print('mean: ', test_pred_mean[:10])
 print('lower bound: ', test_pred_lower[:10])
 print('upper bound: ', test_pred_upper[:10])
 
-print("total preds:", test_pred_mean.shape[0], "expected:", text_x.size(0))
+print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
 
 # Validate dimensions explicitly before assignment:
 assert len(test_pred_mean) == len(df_test), f"Mismatch: predictions ({len(test_pred_mean)}) vs test data ({len(df_test)})"
