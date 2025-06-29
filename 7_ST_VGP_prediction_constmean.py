@@ -141,9 +141,7 @@ test_pred_uppers = []
 test_pred_lowers_90 = []
 test_pred_uppers_90 = []
 
-with torch.no_grad(), gpytorch.settings.fast_pred_var(), \
-     gpytorch.settings.num_likelihood_samples(num_lik_samples), \
-     gpytorch.settings.num_latent_samples(1):
+with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
 
     for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = test_x[i:i+batch_size]
