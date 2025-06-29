@@ -137,7 +137,7 @@ print("Predicting...")
 batch_size = 500
 num_lik_samples = 300
 
-test_loader = DataLoader(text_x, batch_size=batch_size, shuffle=False)
+test_loader = DataLoader(test_x, batch_size=batch_size, shuffle=False)
 print("Test set size:", len(test_x))
 
 test_pred_means = []
