@@ -152,6 +152,10 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
 
         # 2) empirical quantiles
         samples = pred_dist.sample((num_lik_samples,))    # [S, B]
+        print("samples.shape:", samples.shape)  # should be [num_lik_samples, batch_size]
+        print("pred_dist.mean.shape:", pred_dist.mean.shape)  # should be [batch_size]
+
+
         samples_np = samples.cpu().numpy()
         lower_95 = np.percentile(samples_np, 2.5, axis=0)
         upper_95 = np.percentile(samples_np,97.5, axis=0)
