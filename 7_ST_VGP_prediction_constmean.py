@@ -163,7 +163,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
         lower_90 = np.percentile(samples_np, 5.0, axis=0)
         upper_90 = np.percentile(samples_np,95.0, axis=0)
 
-        test_pred_means.append(mean_pred_avg)
+        test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_95)
         test_pred_uppers.append(upper_95)
         test_pred_lowers_90.append(lower_90)
