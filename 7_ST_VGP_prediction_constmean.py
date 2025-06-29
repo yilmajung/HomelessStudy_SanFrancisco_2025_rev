@@ -141,11 +141,11 @@ test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=F
 print("Test set size:", len(test_x))
 
 N = test_x.size(0)
-test_pred_means = np.empty(N, dtype=np.float32)
-test_pred_lowers = np.empty(N, dtype=np.float32)
-test_pred_uppers = np.empty(N, dtype=np.float32)
-test_pred_lowers_90 = np.empty(N, dtype=np.float32)
-test_pred_uppers_90 = np.empty(N, dtype=np.float32)
+mean_all = np.empty(N, dtype=np.float32)
+lower_95_all = np.empty(N, dtype=np.float32)
+upper_95_all = np.empty(N, dtype=np.float32)
+lower_90_all = np.empty(N, dtype=np.float32)
+upper_90_all = np.empty(N, dtype=np.float32)
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for i, (x_batch,) in enumerate(test_loader):
@@ -275,8 +275,8 @@ assert offset == N
 # test_pred_upper_90 = np.concatenate(test_pred_uppers_90)
 
 print('mean: ', mean_all[:10])
-print('lower bound: ', lower95_all[:10])
-print('upper bound: ', upper95_all[:10])
+print('lower bound: ', lower_95_all[:10])
+print('upper bound: ', upper_95_all[:10])
 
 # print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
 
@@ -286,10 +286,10 @@ print('upper bound: ', upper95_all[:10])
 # Attach results to test dataframe
 df_test = df_test.reset_index(drop=True)
 df_test['predicted_count_mean'] = mean_all
-df_test['predicted_count_lower'] = lower95_all
-df_test['predicted_count_upper'] = upper95_all
-df_test['predicted_count_lower_90'] = lower90_all
-df_test['predicted_count_upper_90'] = upper90_all
+df_test['predicted_count_lower'] = lower_95_all
+df_test['predicted_count_upper'] = upper_95_all
+df_test['predicted_count_lower_90'] = lower_90_all
+df_test['predicted_count_upper_90'] = upper_90_all
 
 
 # Save results
