@@ -154,13 +154,13 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         x_batch = x_batch.to(device)
 
         f_dist = model(x_batch)
-        f_mean = f_dist.mean
-
-        mu = f_mean.clamp(min=-3, max=3).exp().clamp(min=1e-3, max=50)  # μ ≤ e³≈20
+        mu = f_dist.mean.clamp(min=-3, max=3).exp().clamp(min=1e-3, max=50)  # μ ≤ e³≈20
         mean_pred = mu.cpu().numpy()
 
-        p_dist = likelihood(f_dist)
-        samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
+        with gpytorch.settings.num_likelihood_samples(num_lik_samples):
+            p_dist = likelihood(f_dist)
+            samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
+        
         lower_95 = np.percentile(samples, 2.5, axis=0)
         upper_95 = np.percentile(samples,97.5, axis=0)
         lower_90 = np.percentile(samples, 5.0, axis=0)
