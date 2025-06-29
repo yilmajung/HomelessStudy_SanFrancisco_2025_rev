@@ -146,48 +146,31 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood)
          mu     = log_mu.exp().clamp(min=1e-3, max=50)       # hard-cap at 50
          r      = self.dispersion
          probs  = r / (r + mu)
+        
+         # replace NaNs and clamp to (epsilon, 1-epsilon)
+         probs = torch.nan_to_num(probs, nan=0.5, posinf=1-1e-6, neginf=1e-6)
+         probs = probs.clamp(min=1e-6, max=1-1e-6)
          return torch.distributions.NegativeBinomial(
-             total_count=r.expand_as(probs), probs=probs
-         )
+             total_count=r.expand_as(mu), probs=probs
+             )
 
      def expected_log_prob(self, target, function_dist, **kwargs):
          log_mu = function_dist.mean.clamp(min=-3, max=3)
          mu     = log_mu.exp().clamp(min=1e-3, max=50)
          r      = self.dispersion
          probs  = r / (r + mu)
+         probs = torch.nan_to_num(probs, nan=0.5, posinf=1-1e-6, neginf=1e-6)
+         probs = probs.clamp(min=1e-6, max=1-1e-6)
          dist   = torch.distributions.NegativeBinomial(
              total_count=r.expand_as(probs), probs=probs
          )
          return dist.log_prob(target)
 
 
-
-class NBLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
-    def __init__(self, init_disp=1.0):
-        super().__init__()
-        raw = torch.tensor(np.log(np.exp(init_disp) - 1), dtype=torch.float32)
-        self.register_parameter('raw_log_dispersion', torch.nn.Parameter(raw))
-    @property
-    def dispersion(self):
-        return F.softplus(self.raw_log_dispersion) + 1e-5
-    def forward(self, f, **kwargs):
-        log_mu = f.clamp(-10,10)
-        mu = log_mu.exp().clamp(1e-3,1e3)
-        r = self.dispersion
-        probs = r / (r + mu)
-        return torch.distributions.NegativeBinomial(total_count=r.expand_as(mu), probs=probs)
-    def expected_log_prob(self, y, f_dist, **kwargs):
-        log_mu = f_dist.mean.clamp(-10,10)
-        mu = log_mu.exp().clamp(1e-3,1e3)
-        r = self.dispersion
-        probs = r / (r + mu)
-        dist = torch.distributions.NegativeBinomial(total_count=r.expand_as(mu), probs=probs)
-        return dist.log_prob(y)
-
 # Device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = STVGPModel(inducing_points.to(device), constant_mean=log_y_mean).to(device)
-likelihood = NBLikelihood().to(device)
+likelihood = NegativeBinomialLikelihood().to(device)
 
 # Optimizer & MLL
 optimizer = torch.optim.Adam([{'params': model.parameters()},{'params': likelihood.parameters()}], lr=0.01)

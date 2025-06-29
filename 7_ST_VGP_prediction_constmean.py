@@ -75,15 +75,21 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood)
          mu     = log_mu.exp().clamp(min=1e-3, max=50)       # hard-cap at 50
          r      = self.dispersion
          probs  = r / (r + mu)
+        
+         # replace NaNs and clamp to (epsilon, 1-epsilon)
+         probs = torch.nan_to_num(probs, nan=0.5, posinf=1-1e-6, neginf=1e-6)
+         probs = probs.clamp(min=1e-6, max=1-1e-6)
          return torch.distributions.NegativeBinomial(
-             total_count=r.expand_as(probs), probs=probs
-         )
+             total_count=r.expand_as(mu), probs=probs
+             )
 
      def expected_log_prob(self, target, function_dist, **kwargs):
          log_mu = function_dist.mean.clamp(min=-3, max=3)
          mu     = log_mu.exp().clamp(min=1e-3, max=50)
          r      = self.dispersion
          probs  = r / (r + mu)
+         probs = torch.nan_to_num(probs, nan=0.5, posinf=1-1e-6, neginf=1e-6)
+         probs = probs.clamp(min=1e-6, max=1-1e-6)
          dist   = torch.distributions.NegativeBinomial(
              total_count=r.expand_as(probs), probs=probs
          )
