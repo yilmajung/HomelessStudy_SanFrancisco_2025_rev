@@ -152,27 +152,22 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for i, (x_batch,) in enumerate(test_loader):
         x_batch = x_batch.to(device)
         B_i = x_batch.size(0)
-
         f_dist = model(x_batch)
         mu = f_dist.mean.clamp(min=-3, max=3).exp().clamp(min=1e-3, max=50)  # μ ≤ e³≈20
         mean_pred = mu.cpu().numpy()
-
         p_dist = likelihood(f_dist)
         samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
         lower_95 = np.percentile(samples, 2.5, axis=0)
         upper_95 = np.percentile(samples,97.5, axis=0)
         lower_90 = np.percentile(samples, 5.0, axis=0)
         upper_90 = np.percentile(samples,95.0, axis=0)
-
         # debug check
         print(f"Batch {i}: B_i={B_i}, mean.shape = {mean_pred.shape}, lower_95.shape = {lower_95.shape}")
-              
         test_pred_means[offset: offset+B_i] = mean_pred
         test_pred_lowers[offset: offset+B_i] = lower_95
         test_pred_uppers[offset: offset+B_i] = upper_95
         test_pred_lowers_90[offset: offset+B_i] = lower_90
         test_pred_uppers_90[offset: offset+B_i] = upper_90
-
         offset += B_i
 
 # Final sanity check
