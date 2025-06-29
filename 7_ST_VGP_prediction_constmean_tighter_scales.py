@@ -11,9 +11,9 @@ from torch.utils.data import DataLoader, TensorDataset
 # Load the necessary files
 print("Loading saved artifacts...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-scaler = joblib.load('scaler_nb_constmean.joblib')
-constant_mean = joblib.load('constant_mean_nb.pkl')
-inducing_points = torch.load('inducing_points_constmean.pt', map_location=device)
+scaler = joblib.load('scaler_nb_constmean_tighter_scales.joblib')
+constant_mean = joblib.load('constant_mean_nb__tighter_scales.pkl')
+inducing_points = torch.load('inducing_points_constmean_tighter_scales.pt', map_location=device)
 
 # Define the model and likelihood classes exactly as in training
 # Define ST-VGP model
@@ -118,8 +118,8 @@ df_test = df[df['ground_truth'].isna()]
 # Instantiate and load trained parameters
 model = STVGPModel(inducing_points.to(device), constant_mean).to(device)
 likelihood = NegativeBinomialLikelihood().to(device)
-model.load_state_dict(torch.load('stvgp_constmean.pth', map_location=device))
-likelihood.load_state_dict(torch.load('likelihood_constmean.pth', map_location=device))
+model.load_state_dict(torch.load('stvgp_constmean_tighter_scales.pth', map_location=device))
+likelihood.load_state_dict(torch.load('likelihood_constmean_tighter_scales.pth', map_location=device))
 
 model.eval()
 likelihood.eval()
@@ -291,5 +291,5 @@ df_test['predicted_count_upper_90'] = upper_90_all
 
 
 # Save results
-df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_nb_constmean_rev.csv', index=False)
-print("Prediction complete. Results saved to 'prediction_nb_constmean_rev.csv'.")
+df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_nb_constmean_tighter_scales.csv', index=False)
+print("Prediction complete. Results saved to 'prediction_nb_constmean_tighter_scales.csv'.")
