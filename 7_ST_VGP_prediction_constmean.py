@@ -166,7 +166,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         upper_90 = np.percentile(samples,95.0, axis=0)
 
         # debug check
-        print(f"Batch {i}: B_i={B_i}, mean.shape = {mean_pred.shape}, lower_95.shape = {lower_95.shape})
+        print(f"Batch {i}: B_i={B_i}, mean.shape = {mean_pred.shape}, lower_95.shape = {lower_95.shape}")
     
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_95)
