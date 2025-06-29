@@ -137,7 +137,7 @@ print("Predicting...")
 batch_size = 500
 num_lik_samples = 300
 
-test_loader = DataLoader(test_x, batch_size=batch_size, shuffle=False)
+test_loader = DataLoader(test_x, batch_size=batch_size, shuffle=False, drop_last=False)
 print("Test set size:", len(test_x))
 
 test_pred_means = []
@@ -147,23 +147,26 @@ test_pred_lowers_90 = []
 test_pred_uppers_90 = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for x_batch in tqdm(test_loader, desc="Predicting batches"):
+    for B_i, x_batch in enumerate(test_loader):
 
     # for i in tqdm(range(0, test_x.size(0), batch_size)):
     #     x_batch = test_x[i:i+batch_size]
         x_batch = x_batch.to(device)
+        B_i = x_batch.size(0)
 
         f_dist = model(x_batch)
         mu = f_dist.mean.clamp(min=-3, max=3).exp().clamp(min=1e-3, max=50)  # μ ≤ e³≈20
         mean_pred = mu.cpu().numpy()
 
-        with gpytorch.settings.num_likelihood_samples(num_lik_samples):
-            p_dist = likelihood(f_dist)
-            samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
-            lower_95 = np.percentile(samples, 2.5, axis=0)
-            upper_95 = np.percentile(samples,97.5, axis=0)
-            lower_90 = np.percentile(samples, 5.0, axis=0)
-            upper_90 = np.percentile(samples,95.0, axis=0)
+        p_dist = likelihood(f_dist)
+        samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
+        lower_95 = np.percentile(samples, 2.5, axis=0)
+        upper_95 = np.percentile(samples,97.5, axis=0)
+        lower_90 = np.percentile(samples, 5.0, axis=0)
+        upper_90 = np.percentile(samples,95.0, axis=0)
+
+        # debug check
+        print(f"Batch {i}: B_i={B_i}, mean.shape = {mean_pred.shape}, lower_95.shape = {lower_95.shape})
     
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_95)
@@ -235,6 +238,8 @@ test_pred_upper_90 = np.concatenate(test_pred_uppers_90)
 print('mean: ', test_pred_mean[:10])
 print('lower bound: ', test_pred_lower[:10])
 print('upper bound: ', test_pred_upper[:10])
+
+print("total preds:", test_pred_mean.shape[0], "expected:", text_x.size(0))
 
 # Validate dimensions explicitly before assignment:
 assert len(test_pred_mean) == len(df_test), f"Mismatch: predictions ({len(test_pred_mean)}) vs test data ({len(df_test)})"
