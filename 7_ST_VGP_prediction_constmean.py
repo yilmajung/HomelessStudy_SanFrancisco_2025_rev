@@ -151,13 +151,13 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), \
         pred_dist = likelihood(latent)
         
         # 1) analytic mean
-        mean_pred = pred_dist.mean.cpu().numpy()        
+        mean_pred = pred_dist.mean.cpu().numpy()
+        mean_pred_avg = mean_pred.mean(axis=0)        
 
         # 2) empirical quantiles
         samples = pred_dist.sample((num_lik_samples,))    # [S, B]
         print("samples.shape:", samples.shape)  # should be [num_lik_samples, batch_size]
         print("pred_dist.mean.shape:", pred_dist.mean.shape)  # should be [batch_size]
-
 
         samples_np = samples.cpu().numpy()
         lower_95 = np.percentile(samples_np, 2.5, axis=0)
@@ -165,7 +165,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), \
         lower_90 = np.percentile(samples_np, 5.0, axis=0)
         upper_90 = np.percentile(samples_np,95.0, axis=0)
 
-        test_pred_means.append(mean_pred)
+        test_pred_means.append(mean_pred_avg)
         test_pred_lowers.append(lower_95)
         test_pred_uppers.append(upper_95)
         test_pred_lowers_90.append(lower_90)
