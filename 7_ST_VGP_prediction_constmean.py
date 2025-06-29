@@ -148,9 +148,6 @@ test_pred_uppers_90 = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for i, (x_batch,) in enumerate(test_loader):
-
-    # for i in tqdm(range(0, test_x.size(0), batch_size)):
-    #     x_batch = test_x[i:i+batch_size]
         x_batch = x_batch.to(device)
         B_i = x_batch.size(0)
 
@@ -167,12 +164,14 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
 
         # debug check
         print(f"Batch {i}: B_i={B_i}, mean.shape = {mean_pred.shape}, lower_95.shape = {lower_95.shape}")
-    
-        test_pred_means.append(mean_pred)
-        test_pred_lowers.append(lower_95)
-        test_pred_uppers.append(upper_95)
-        test_pred_lowers_90.append(lower_90)
-        test_pred_uppers_90.append(upper_90)
+              
+        test_pred_means[offset: offset+B_i] = mean_pred
+        test_pred_lowers[offset: offset+B_i] = lower_95
+        test_pred_uppers[offset: offset+B_i] = upper_95
+        test_pred_lowers_90[offset: offset+B_i] = lower_90
+        test_pred_uppers_90[offset: offset+B_i] = upper_90
+
+        offset += B_i
 
 
 # with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
