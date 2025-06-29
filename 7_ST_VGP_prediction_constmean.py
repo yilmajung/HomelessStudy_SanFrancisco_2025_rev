@@ -176,9 +176,6 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         y_samps = nb.sample()  # (S, B)
         y_np    = y_samps.cpu().numpy()
 
-        lo95_all[offset:offset+B_i] = np.percentile(y_np, 2.5,  axis=0)
-        hi95_all[offset:offset+B] = np.percentile(y_np,97.5, axis=0)
-
         lower_95_all[offset:offset+B_i] = np.percentile(samples, 2.5, axis=0)
         upper_95_all[offset:offset+B_i] = np.percentile(samples,97.5, axis=0)
         lower_90_all[offset:offset+B_i] = np.percentile(samples, 5.0, axis=0)
