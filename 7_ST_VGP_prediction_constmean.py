@@ -133,7 +133,7 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 
 # Predict in batches (if test set is large)
 print("Predicting...")
-batch_size = 500
+batch_size = 512
 num_lik_samples = 300
 test_pred_means = []
 test_pred_lowers = []
@@ -141,33 +141,58 @@ test_pred_uppers = []
 test_pred_lowers_90 = []
 test_pred_uppers_90 = []
 
-with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
+with torch.no_grad(), gpytorch.settings.fast_pred_var():
 
-    for i in tqdm(range(0, test_x.size(0), batch_size)):
-        x_batch = test_x[i:i+batch_size]
-        latent = model(x_batch)
-        pred_dist = likelihood(latent)
-        
-        # 1) analytic mean
-        mean_pred = pred_dist.mean.cpu().numpy()
-        #mean_pred_avg = mean_pred.mean(axis=0)        
+    for x_batch in tqdm(test_loader, desc="Predicting batches"):
+        x_batch = x_batch.to(device)
 
-        # 2) empirical quantiles
-        samples = pred_dist.sample((num_lik_samples,))    # [S, B]
-        print("samples.shape:", samples.shape)  # should be [num_lik_samples, batch_size]
-        print("pred_dist.mean.shape:", pred_dist.mean.shape)  # should be [batch_size]
+        f_dist = model(x_batch)
+        f_mean = f_dist.mean
 
-        samples_np = samples.cpu().numpy()
-        lower_95 = np.percentile(samples_np, 2.5, axis=0)
-        upper_95 = np.percentile(samples_np,97.5, axis=0)
-        lower_90 = np.percentile(samples_np, 5.0, axis=0)
-        upper_90 = np.percentile(samples_np,95.0, axis=0)
+        mu = f_mean.clamp(min=-3, max=3).exp().clamp(min=1e-3, max=50)  # μ ≤ e³≈20
+        mean_pred = mu.cpu().numpy()
 
+        p_dist = likelihood(f_dist)
+        samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
+        lower_95 = np.percentile(samples, 2.5, axis=0)
+        upper_95 = np.percentile(samples,97.5, axis=0)
+        lower_90 = np.percentile(samples, 5.0, axis=0)
+        upper_90 = np.percentile(samples,95.0, axis=0)
+    
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_95)
         test_pred_uppers.append(upper_95)
         test_pred_lowers_90.append(lower_90)
         test_pred_uppers_90.append(upper_90)
+
+
+# with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
+
+#     for i in tqdm(range(0, test_x.size(0), batch_size)):
+#         x_batch = test_x[i:i+batch_size]
+#         latent = model(x_batch)
+#         pred_dist = likelihood(latent)
+        
+#         # 1) analytic mean
+#         mean_pred = pred_dist.mean.cpu().numpy()
+#         #mean_pred_avg = mean_pred.mean(axis=0)        
+
+#         # 2) empirical quantiles
+#         samples = pred_dist.sample((num_lik_samples,))    # [S, B]
+#         print("samples.shape:", samples.shape)  # should be [num_lik_samples, batch_size]
+#         print("pred_dist.mean.shape:", pred_dist.mean.shape)  # should be [batch_size]
+
+#         samples_np = samples.cpu().numpy()
+#         lower_95 = np.percentile(samples_np, 2.5, axis=0)
+#         upper_95 = np.percentile(samples_np,97.5, axis=0)
+#         lower_90 = np.percentile(samples_np, 5.0, axis=0)
+#         upper_90 = np.percentile(samples_np,95.0, axis=0)
+
+#         test_pred_means.append(mean_pred)
+#         test_pred_lowers.append(lower_95)
+#         test_pred_uppers.append(upper_95)
+#         test_pred_lowers_90.append(lower_90)
+#         test_pred_uppers_90.append(upper_90)
 
 # with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
 #     for i in tqdm(range(0, test_x.size(0), batch_size)):
