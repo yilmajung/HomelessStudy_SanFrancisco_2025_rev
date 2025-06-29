@@ -169,8 +169,6 @@ test_pred_uppers_90 = []
 #         test_pred_lowers_90.append(lower_90)
 #         test_pred_uppers_90.append(upper_90)
 
-
-
 with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
     for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = test_x[i:i+batch_size]         
@@ -202,6 +200,10 @@ test_pred_lower = np.concatenate(test_pred_lowers)
 test_pred_upper = np.concatenate(test_pred_uppers)
 test_pred_lower_90 = np.concatenate(test_pred_lowers_90)
 test_pred_upper_90 = np.concatenate(test_pred_uppers_90)
+
+print('mean: ', test_pred_mean[:10])
+print('lower bound: ', test_pred_lower[:10])
+print('upper bound: ', test_pred_upper[:10])
 
 # Validate dimensions explicitly before assignment:
 assert len(test_pred_mean) == len(df_test), f"Mismatch: predictions ({len(test_pred_mean)}) vs test data ({len(df_test)})"
