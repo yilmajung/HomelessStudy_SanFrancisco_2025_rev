@@ -142,8 +142,8 @@ class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood)
 
      def forward(self, function_samples, **kwargs):
          # tighter clamp to prevent extreme μ
-         log_mu = function_samples.clamp(min=-3, max=3)     # μ ≤ e³≈20
-         mu     = log_mu.exp().clamp(min=1e-3, max=50)       # hard-cap at 50
+         log_mu = function_samples.clamp(min=-3, max=2.7)     # μ ≤ e³≈20
+         mu     = log_mu.exp().clamp(min=1e-3, max=15)       # hard-cap at 15
          r      = self.dispersion
          probs  = r / (r + mu)
         
