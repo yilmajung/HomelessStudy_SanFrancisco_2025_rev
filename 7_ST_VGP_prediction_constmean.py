@@ -147,7 +147,7 @@ test_pred_lowers_90 = []
 test_pred_uppers_90 = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for i, x_batch in enumerate(test_loader):
+    for i, (x_batch,) in enumerate(test_loader):
 
     # for i in tqdm(range(0, test_x.size(0), batch_size)):
     #     x_batch = test_x[i:i+batch_size]
