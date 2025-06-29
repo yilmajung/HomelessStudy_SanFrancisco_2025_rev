@@ -33,8 +33,9 @@ class STVGPModel(gpytorch.models.ApproximateGP):
             gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=2))
         self.temporal_kernel  = gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.MaternKernel(nu=1.5))
+        cov_dim = inducing_points.size(-1) - 3
         self.covariate_kernel = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.RBFKernel(ard_num_dims=X_covariates.shape[1]))
+            gpytorch.kernels.RBFKernel(ard_num_dims=cov_dim))
         self.const_kernel     = gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.ConstantKernel())
 
