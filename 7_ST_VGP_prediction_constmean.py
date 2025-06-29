@@ -160,11 +160,10 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         with gpytorch.settings.num_likelihood_samples(num_lik_samples):
             p_dist = likelihood(f_dist)
             samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
-        
-        lower_95 = np.percentile(samples, 2.5, axis=0)
-        upper_95 = np.percentile(samples,97.5, axis=0)
-        lower_90 = np.percentile(samples, 5.0, axis=0)
-        upper_90 = np.percentile(samples,95.0, axis=0)
+            lower_95 = np.percentile(samples, 2.5, axis=0)
+            upper_95 = np.percentile(samples,97.5, axis=0)
+            lower_90 = np.percentile(samples, 5.0, axis=0)
+            upper_90 = np.percentile(samples,95.0, axis=0)
     
         test_pred_means.append(mean_pred)
         test_pred_lowers.append(lower_95)
