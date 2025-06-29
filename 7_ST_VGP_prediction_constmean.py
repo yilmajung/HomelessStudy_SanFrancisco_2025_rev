@@ -147,6 +147,7 @@ upper_95_all = np.empty(N, dtype=np.float32)
 lower_90_all = np.empty(N, dtype=np.float32)
 upper_90_all = np.empty(N, dtype=np.float32)
 
+offset = 0
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for i, (x_batch,) in enumerate(test_loader):
         x_batch = x_batch.to(device)
