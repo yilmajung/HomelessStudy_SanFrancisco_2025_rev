@@ -106,7 +106,7 @@ df_test = df[df['ground_truth'].isna()]
 
 
 # Instantiate and load trained parameters
-model = STVGPModel(inducing_points.to(device)).to(device)
+model = STVGPModel(inducing_points.to(device), constant_mean).to(device)
 likelihood = NegativeBinomialLikelihood().to(device)
 model.load_state_dict(torch.load('stvgp_constmean.pth', map_location=device))
 likelihood.load_state_dict(torch.load('likelihood_constmean.pth', map_location=device))
