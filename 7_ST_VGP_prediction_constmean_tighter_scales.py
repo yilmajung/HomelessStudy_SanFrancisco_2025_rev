@@ -39,6 +39,8 @@ class STVGPModel(gpytorch.models.ApproximateGP):
             gpytorch.kernels.RBFKernel(ard_num_dims=cov_dim))
         self.const_kernel     = gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.ConstantKernel())
+        self.spatial_kernel.outputscale = gpytorch.priors.GammaPrior(2.0, 0.15)
+        self.temporal_kernel.outputscale = gpytorch.priors.GammaPrior(2.0, 0.15)
 
     def forward(self, x):
         s, t, c = x[:, :2], x[:, 2:3], x[:, 3:]
@@ -53,6 +55,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covar = Ks * Kt * Kc + Ks + Kt + Kc + Kconst
         covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
+
 
 class NegativeBinomialLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
      def __init__(self, init_dispersion=1.0):
