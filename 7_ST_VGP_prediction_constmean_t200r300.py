@@ -141,7 +141,7 @@ test_pred_uppers_90 = []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
 
-    for x_batch in tqdm(test_loader, desc="Predicting batches"):
+    for i in tqdm(range(0, test_x.size(0), batch_size)):
         x_batch = x_batch.to(device)
 
         f_dist = model(x_batch)
