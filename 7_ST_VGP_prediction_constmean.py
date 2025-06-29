@@ -140,12 +140,14 @@ num_lik_samples = 300
 test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False, drop_last=False)
 print("Test set size:", len(test_x))
 
-test_pred_means = []
-test_pred_lowers = []
-test_pred_uppers = []
-test_pred_lowers_90 = []
-test_pred_uppers_90 = []
+N = test_x.size(0)
+test_pred_means = np.empty(N, dtype=np.float32)
+test_pred_lowers = np.empty(N, dtype=np.float32)
+test_pred_uppers = np.empty(N, dtype=np.float32)
+test_pred_lowers_90 = np.empty(N, dtype=np.float32)
+test_pred_uppers_90 = np.empty(N, dtype=np.float32)
 
+offset = 0
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for i, (x_batch,) in enumerate(test_loader):
         x_batch = x_batch.to(device)
@@ -173,6 +175,8 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
 
         offset += B_i
 
+# Final sanity check
+assert offset == N, f"Only wrote {offset} values but expected {N}"
 
 # with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
 
