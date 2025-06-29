@@ -148,7 +148,7 @@ test_pred_lowers_90 = np.empty(N, dtype=np.float32)
 test_pred_uppers_90 = np.empty(N, dtype=np.float32)
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for i, (x_batch,) in enumerate(loader):
+    for i, (x_batch,) in enumerate(test_loader):
         x_batch = x_batch.to(device)
         B_i = x_batch.size(0)
 
@@ -274,9 +274,9 @@ assert offset == N
 # test_pred_lower_90 = np.concatenate(test_pred_lowers_90)
 # test_pred_upper_90 = np.concatenate(test_pred_uppers_90)
 
-# print('mean: ', test_pred_mean[:10])
-# print('lower bound: ', test_pred_lower[:10])
-# print('upper bound: ', test_pred_upper[:10])
+print('mean: ', mean_all[:10])
+print('lower bound: ', lower95_all[:10])
+print('upper bound: ', upper95_all[:10])
 
 # print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
 
