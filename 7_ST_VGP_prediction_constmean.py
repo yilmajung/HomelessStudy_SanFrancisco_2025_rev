@@ -147,32 +147,72 @@ test_pred_uppers = np.empty(N, dtype=np.float32)
 test_pred_lowers_90 = np.empty(N, dtype=np.float32)
 test_pred_uppers_90 = np.empty(N, dtype=np.float32)
 
-offset = 0
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for i, (x_batch,) in enumerate(test_loader):
+    for i, (x_batch,) in enumerate(loader):
         x_batch = x_batch.to(device)
         B_i = x_batch.size(0)
+
+        # 1) GP posterior → analytic mean
         f_dist = model(x_batch)
-        mu = f_dist.mean.clamp(min=-3, max=3).exp().clamp(min=1e-3, max=50)  # μ ≤ e³≈20
-        mean_pred = mu.cpu().numpy()
-        with gpytorch.settings.num_likelihood_samples(300):
-            p_dist = likelihood(f_dist)
-            samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
-        lower_95 = np.percentile(samples, 2.5, axis=0)
-        upper_95 = np.percentile(samples,97.5, axis=0)
-        lower_90 = np.percentile(samples, 5.0, axis=0)
-        upper_90 = np.percentile(samples,95.0, axis=0)
-        # debug check
-        print(f"Batch {i}: B_i={B_i}, mean.shape = {mean_pred.shape}, lower_95.shape = {lower_95.shape}")
-        test_pred_means[offset: offset+B_i] = mean_pred
-        test_pred_lowers[offset: offset+B_i] = lower_95
-        test_pred_uppers[offset: offset+B_i] = upper_95
-        test_pred_lowers_90[offset: offset+B_i] = lower_90
-        test_pred_uppers_90[offset: offset+B_i] = upper_90
+        mu     = f_dist.mean.clamp(-3,3).exp().clamp(1e-3,50)
+        mean_all[offset:offset+B_i] = mu.cpu().numpy()
+
+        # 2) Jointly sample S latent draws
+        f_samps = f_dist.rsample(sample_shape=torch.Size([num_samples]))  # (S, B)
+        log_mu_samps = f_samps.clamp(-3,3)
+        mu_samps     = log_mu_samps.exp().clamp(1e-3, 50)
+
+        # 3) NB parameters
+        r = likelihood.dispersion
+        probs = r / (r + mu_samps)
+        probs = probs.clamp(1e-6, 1-1e-6)
+
+        # 4) Draw from torch.distributions.NegativeBinomial
+        nb = torch.distributions.NegativeBinomial(
+            total_count=r.expand_as(mu_samps),
+            probs=probs
+        )
+        y_samps = nb.sample()  # (S, B)
+        y_np    = y_samps.cpu().numpy()
+
+        lo95_all[offset:offset+B_i] = np.percentile(y_np, 2.5,  axis=0)
+        hi95_all[offset:offset+B] = np.percentile(y_np,97.5, axis=0)
+
+        lower_95_all[offset:offset+B_i] = np.percentile(samples, 2.5, axis=0)
+        upper_95_all[offset:offset+B_i] = np.percentile(samples,97.5, axis=0)
+        lower_90_all[offset:offset+B_i] = np.percentile(samples, 5.0, axis=0)
+        upper_90_all[offset:offset+B_i] = np.percentile(samples,95.0, axis=0)
+
         offset += B_i
 
-# Final sanity check
-assert offset == N, f"Only wrote {offset} values but expected {N}"
+assert offset == N
+
+# offset = 0
+# with torch.no_grad(), gpytorch.settings.fast_pred_var():
+#     for i, (x_batch,) in enumerate(test_loader):
+#         x_batch = x_batch.to(device)
+#         B_i = x_batch.size(0)
+#         f_dist = model(x_batch)
+#         mu = f_dist.mean.clamp(min=-3, max=3).exp().clamp(min=1e-3, max=50)  # μ ≤ e³≈20
+#         mean_pred = mu.cpu().numpy()
+#         with gpytorch.settings.num_likelihood_samples(300):
+#             p_dist = likelihood(f_dist)
+#             samples = p_dist.sample((num_lik_samples,)).cpu().numpy()
+#         lower_95 = np.percentile(samples, 2.5, axis=0)
+#         upper_95 = np.percentile(samples,97.5, axis=0)
+#         lower_90 = np.percentile(samples, 5.0, axis=0)
+#         upper_90 = np.percentile(samples,95.0, axis=0)
+#         # debug check
+#         print(f"Batch {i}: B_i={B_i}, mean.shape = {mean_pred.shape}, lower_95.shape = {lower_95.shape}")
+#         test_pred_means[offset: offset+B_i] = mean_pred
+#         test_pred_lowers[offset: offset+B_i] = lower_95
+#         test_pred_uppers[offset: offset+B_i] = upper_95
+#         test_pred_lowers_90[offset: offset+B_i] = lower_90
+#         test_pred_uppers_90[offset: offset+B_i] = upper_90
+#         offset += B_i
+
+# # Final sanity check
+# assert offset == N, f"Only wrote {offset} values but expected {N}"
 
 # with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(num_lik_samples):
 
@@ -228,28 +268,29 @@ assert offset == N, f"Only wrote {offset} values but expected {N}"
 #         test_pred_uppers_90.append(upper_pred_90)
 
 # Concatenate batch predictions
-test_pred_mean = np.concatenate(test_pred_means)
-test_pred_lower = np.concatenate(test_pred_lowers)
-test_pred_upper = np.concatenate(test_pred_uppers)
-test_pred_lower_90 = np.concatenate(test_pred_lowers_90)
-test_pred_upper_90 = np.concatenate(test_pred_uppers_90)
+# test_pred_mean = np.concatenate(test_pred_means)
+# test_pred_lower = np.concatenate(test_pred_lowers)
+# test_pred_upper = np.concatenate(test_pred_uppers)
+# test_pred_lower_90 = np.concatenate(test_pred_lowers_90)
+# test_pred_upper_90 = np.concatenate(test_pred_uppers_90)
 
-print('mean: ', test_pred_mean[:10])
-print('lower bound: ', test_pred_lower[:10])
-print('upper bound: ', test_pred_upper[:10])
+# print('mean: ', test_pred_mean[:10])
+# print('lower bound: ', test_pred_lower[:10])
+# print('upper bound: ', test_pred_upper[:10])
 
-print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
+# print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
 
-# Validate dimensions explicitly before assignment:
-assert len(test_pred_mean) == len(df_test), f"Mismatch: predictions ({len(test_pred_mean)}) vs test data ({len(df_test)})"
+# # Validate dimensions explicitly before assignment:
+# assert len(test_pred_mean) == len(df_test), f"Mismatch: predictions ({len(test_pred_mean)}) vs test data ({len(df_test)})"
 
 # Attach results to test dataframe
 df_test = df_test.reset_index(drop=True)
-df_test['predicted_count_mean'] = test_pred_mean
-df_test['predicted_count_lower'] = test_pred_lower
-df_test['predicted_count_upper'] = test_pred_upper
-df_test['predicted_count_lower_90'] = test_pred_lower_90
-df_test['predicted_count_upper_90'] = test_pred_upper_90
+df_test['predicted_count_mean'] = mean_all
+df_test['predicted_count_lower'] = lower95_all
+df_test['predicted_count_upper'] = upper95_all
+df_test['predicted_count_lower_90'] = lower90_all
+df_test['predicted_count_upper_90'] = upper90_all
+
 
 # Save results
 df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_nb_constmean.csv', index=False)
