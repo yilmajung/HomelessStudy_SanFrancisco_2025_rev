@@ -118,29 +118,20 @@ pred_means = []
 pred_medians = []
 pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
 
-with torch.no_grad(), gpytorch.settings.fast_pred_var():
+with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(1):
     for x_batch, in tqdm(test_loader):
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
         
         samples = pred_dist.sample(torch.Size([num_lik_samples]))
         samples_np = samples.cpu().numpy()
-
-        bs = samples_np.shape[-1]
-        flat = samples_np.reshape(-1, bs)
-
-        # debugging: print sample shapes
-        print(f"flatten samples_np shape: {flat.shape}")
-
-        batch_mean = flat.mean(axis=0)
-        batch_median = np.median(flat, axis=0)
-        batch_lower95 = np.percentile(flat, 2.5, axis=0)
-        batch_upper95 = np.percentile(flat, 97.5, axis=0)
-        batch_lower90 = np.percentile(flat, 5.0, axis=0)
-        batch_upper90 = np.percentile(flat, 95.0, axis=0)
-
-        # debugging: print batch shapes
-        print(f"batch_mean shape: {batch_mean.shape}")
+        samples_np = samples_np[:,0,:]
+        batch_mean = samples_np.mean(axis=0)
+        batch_median = np.median(samples_np, axis=0)
+        batch_lower95 = np.percentile(samples_np, 2.5, axis=0)
+        batch_upper95 = np.percentile(samples_np, 97.5, axis=0)
+        batch_lower90 = np.percentile(samples_np, 5.0, axis=0)
+        batch_upper90 = np.percentile(samples_np, 95.0, axis=0)
 
         pred_means.append(batch_mean)
         pred_medians.append(batch_median)
@@ -148,6 +139,38 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         pred_upper95.append(batch_upper95)
         pred_lower90.append(batch_lower90)
         pred_upper90.append(batch_upper90)
+
+
+# with torch.no_grad(), gpytorch.settings.fast_pred_var():
+#     for x_batch, in tqdm(test_loader):
+#         latent_dist = model(x_batch)
+#         pred_dist = likelihood(latent_dist)
+        
+#         samples = pred_dist.sample(torch.Size([num_lik_samples]))
+#         samples_np = samples.cpu().numpy()
+
+#         bs = samples_np.shape[-1]
+#         flat = samples_np.reshape(-1, bs)
+
+#         # debugging: print sample shapes
+#         print(f"flatten samples_np shape: {flat.shape}")
+
+#         batch_mean = flat.mean(axis=0)
+#         batch_median = np.median(flat, axis=0)
+#         batch_lower95 = np.percentile(flat, 2.5, axis=0)
+#         batch_upper95 = np.percentile(flat, 97.5, axis=0)
+#         batch_lower90 = np.percentile(flat, 5.0, axis=0)
+#         batch_upper90 = np.percentile(flat, 95.0, axis=0)
+
+#         # debugging: print batch shapes
+#         print(f"batch_mean shape: {batch_mean.shape}")
+
+#         pred_means.append(batch_mean)
+#         pred_medians.append(batch_median)
+#         pred_lower95.append(batch_lower95)
+#         pred_upper95.append(batch_upper95)
+#         pred_lower90.append(batch_lower90)
+#         pred_upper90.append(batch_upper90)
 
 
 print("Sample shapes in pred_means:")
@@ -192,5 +215,5 @@ df_test['predicted_count_upper_90'] = pred_upper90
 
 
 # Save results
-df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_sanitycheck.csv', index=False)
+df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_sanitycheck2.csv', index=False)
 print("Prediction complete. Results saved to 'prediction_poisson_lr001.csv'.")
