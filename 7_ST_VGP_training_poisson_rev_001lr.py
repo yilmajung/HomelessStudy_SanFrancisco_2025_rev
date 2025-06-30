@@ -210,7 +210,6 @@ for epoch in tqdm(range(500)):
         total_loss += loss.item()
     if epoch % 50 == 0:
         print(f"Epoch {epoch}, Loss {total_loss:.3f}")
-        print(f"Current dispersion: {likelihood.dispersion.item():.4f}")
 
 # Save
 torch.save(model.state_dict(), 'stvgp_pois_constmean.pth')
