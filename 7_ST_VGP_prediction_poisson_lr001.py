@@ -131,6 +131,11 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         pred_lower90.append(np.percentile(samples_np, 5.0, axis=0))
         pred_upper90.append(np.percentile(samples_np, 95.0, axis=0))
 
+print("Sample shapes in pred_means:")
+for i in [0, -1]:
+    arr = pred_means[i]
+    print(f"  [{i}] type={type(arr)}  shape={getattr(arr, 'shape', None)}")
+
 # Turn each list of arrays into one long 1D array
 pred_means      = np.concatenate(pred_means)
 pred_lower95    = np.concatenate(pred_lower95)
