@@ -125,6 +125,14 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         m = latent_post.mean                            # shape (bsz,)
         v = latent_post.variance                        # shape (bsz,)
 
+        v_np = v.cpu().numpy()
+        print("variance percentiles:",
+            np.percentile(v_np, [50,90,95,99,99.9,100]))
+        # and maybe:
+        idx = np.argmax(v_np)
+        print("max variance at idx", idx, "→", v_np[idx],
+              "  coords:", test_x_np[idx, :3])
+        
         # analytic Poisson mean
         y_hat = torch.exp(m + 0.5 * v)                  # shape (bsz,)
         analytic_means.append(y_hat.cpu().numpy())
