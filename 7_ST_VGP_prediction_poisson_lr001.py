@@ -138,6 +138,12 @@ pred_upper95    = np.concatenate(pred_upper95)
 pred_lower90    = np.concatenate(pred_lower90)
 pred_upper90    = np.concatenate(pred_upper90)
 
+print(">>> After concat:")
+print("  type(pred_means)   ", type(pred_means))
+print("  pred_means.shape   ", getattr(pred_means, "shape", None))
+print("  len(df_test)       ", len(df_test))
+
+
 # Sanity check
 assert len(pred_means)     == len(df_test)
 assert len(pred_lower95)   == len(df_test)
