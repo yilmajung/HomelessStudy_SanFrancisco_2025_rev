@@ -115,6 +115,7 @@ num_lik_samples = 200
 test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False, drop_last=False)
 
 pred_means = []
+pred_medians = []
 pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
@@ -142,6 +143,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         print(f"batch_mean shape: {batch_mean.shape}")
 
         pred_means.append(batch_mean)
+        pred_medians.append(batch_median)
         pred_lower95.append(batch_lower95)
         pred_upper95.append(batch_upper95)
         pred_lower90.append(batch_lower90)
@@ -155,6 +157,7 @@ for i in [0, -1]:
 
 # Turn each list of arrays into one long 1D array
 pred_means      = np.concatenate(pred_means)
+pred_medians    = np.concatenate(pred_medians)
 pred_lower95    = np.concatenate(pred_lower95)
 pred_upper95    = np.concatenate(pred_upper95)
 pred_lower90    = np.concatenate(pred_lower90)
@@ -162,14 +165,16 @@ pred_upper90    = np.concatenate(pred_upper90)
 
 # Sanity check
 assert len(pred_means)     == len(df_test)
+assert len(pred_medians)  == len(df_test)
 assert len(pred_lower95)   == len(df_test)
 assert len(pred_upper95)   == len(df_test)
 assert len(pred_lower90)   == len(df_test)
 assert len(pred_upper90)   == len(df_test)
 
 print('pred_means: ', pred_means[:10])
+print('pred_medians: ', pred_medians[:10])
 print('pred_lower95: ', pred_lower95[:10])
-print('pred_upper95: ', pred_upper95[:10])
+#print('pred_upper95: ', pred_upper95[:10])
 
 # print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
 
@@ -179,6 +184,7 @@ print('pred_upper95: ', pred_upper95[:10])
 # Attach results to test dataframe
 df_test = df_test.reset_index(drop=True)
 df_test['predicted_count_mean'] = pred_means
+df_test['predicted_count_median'] = pred_medians
 df_test['predicted_count_lower'] = pred_lower95
 df_test['predicted_count_upper'] = pred_upper95
 df_test['predicted_count_lower_90'] = pred_lower90
