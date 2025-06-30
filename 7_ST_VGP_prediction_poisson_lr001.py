@@ -125,11 +125,17 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         samples = pred_dist.sample(torch.Size([num_lik_samples]))
         samples_np = samples.cpu().numpy()
 
+        # debugging: print sample shapes
+        print(f"samples_np shape: {samples_np.shape})
+
         batch_mean = samples_np.mean(axis=0)
         batch_lower95 = np.percentile(samples_np, 2.5, axis=0)
         batch_upper95 = np.percentile(samples_np, 97.5, axis=0)
         batch_lower90 = np.percentile(samples_np, 5.0, axis=0)
         batch_upper90 = np.percentile(samples_np, 95.0, axis=0)
+
+        # debugging: print batch shapes
+        print(f"batch_mean shape: {batch_mean.shape}")
 
         pred_means.append(batch_mean)
         pred_lower95.append(batch_lower95)
