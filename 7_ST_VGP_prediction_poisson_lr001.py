@@ -131,6 +131,19 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         pred_lower90.append(np.percentile(samples_np, 5.0, axis=0))
         pred_upper90.append(np.percentile(samples_np, 95.0, axis=0))
 
+# Turn each list of arrays into one long 1D array
+pred_means      = np.concatenate(pred_means)
+pred_lower95    = np.concatenate(pred_lower95)
+pred_upper95    = np.concatenate(pred_upper95)
+pred_lower90    = np.concatenate(pred_lower90)
+pred_upper90    = np.concatenate(pred_upper90)
+
+# Sanity check
+assert len(pred_means)     == len(df_test)
+assert len(pred_lower95)   == len(df_test)
+assert len(pred_upper95)   == len(df_test)
+assert len(pred_lower90)   == len(df_test)
+assert len(pred_upper90)   == len(df_test)
 
 print('pred_means: ', pred_means[:10])
 print('pred_lower95: ', pred_lower95[:10])
