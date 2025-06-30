@@ -109,39 +109,72 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 
 # Predict in batches (if test set is large)
 print("Predicting...")
-batch_size = 512
-num_lik_samples = 200
 
-test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False, drop_last=False)
 
-analytic_means =[]
-# pred_means = []
-# pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
-
+# (1) Compute posterior mean & variance on ALL test points in one go
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for x_batch, in tqdm(test_loader):
-        # Get the posterior over the latent f at these points
-        latent_post = model(x_batch)                    # MultivariateNormal
-        m = latent_post.mean                            # shape (bsz,)
-        v = latent_post.variance                        # shape (bsz,)
+    latent_post = model(test_x)     # MultivariateNormal over all N points
+    m           = latent_post.mean      # shape (N,)
+    v           = latent_post.variance  # shape (N,)
 
-        v_np = v.cpu().numpy()
-        print("variance percentiles:",
-            np.percentile(v_np, [50,90,95,99,99.9,100]))
-        # and maybe:
-        idx = np.argmax(v_np)
-        print("max variance at idx", idx, "→", v_np[idx],
-              "  coords:", test_x_np[idx, :3])
-        
-        # analytic Poisson mean
-        y_hat = torch.exp(m + 0.5 * v)                  # shape (bsz,)
-        analytic_means.append(y_hat.cpu().numpy())
-    
-# flatten into one long array of length N_test
-analytic_means = np.concatenate(analytic_means)
+# (2) Inspect the spread of v just once
+v_np = v.cpu().numpy()
+print("variance percentiles:",
+      np.percentile(v_np, [50, 90, 95, 99, 100]))
+idx = np.argmax(v_np)
+print("max variance at idx", idx,
+      "→", v_np[idx],
+      " coords:", test_x_np[idx, :3])
 
+# (3) Compute the analytic Poisson mean, with clamping on the log‐scale
+logm     = m + 0.5 * v
+logm_clp = torch.clamp(logm, min=-10.0, max=10.0)   # caps exp at ~2.2e4
+y_hat    = torch.exp(logm_clp)                     # shape (N,)
+
+# (4) Stick it back into your DataFrame
 df_test = df_test.reset_index(drop=True)
-df_test['predicted_count_mean'] = analytic_means
+df_test['predicted_count_mean'] = y_hat.cpu().numpy()
+
+# And save
+df_test.to_csv('prediction_poisson_analytic_clamped.csv', index=False)
+print("Done! Saved analytic‐mean (clamped) predictions.")
+
+
+
+
+# batch_size = 512
+# num_lik_samples = 200
+
+# test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False, drop_last=False)
+
+# analytic_means =[]
+# # pred_means = []
+# # pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
+
+# with torch.no_grad(), gpytorch.settings.fast_pred_var():
+#     for x_batch, in tqdm(test_loader):
+#         # Get the posterior over the latent f at these points
+#         latent_post = model(x_batch)                    # MultivariateNormal
+#         m = latent_post.mean                            # shape (bsz,)
+#         v = latent_post.variance                        # shape (bsz,)
+
+#         # analytic Poisson mean
+#         y_hat = torch.exp(m + 0.5 * v)                  # shape (bsz,)
+#         analytic_means.append(y_hat.cpu().numpy())
+
+# v_np = v.cpu().numpy()
+# print("variance percentiles:",
+#     np.percentile(v_np, [50,90,95,99,99.9,100]))
+# # and maybe:
+# idx = np.argmax(v_np)
+# print("max variance at idx", idx, "→", v_np[idx],
+#         "  coords:", test_x_np[idx, :3])
+
+# # flatten into one long array of length N_test
+# analytic_means = np.concatenate(analytic_means)
+
+# df_test = df_test.reset_index(drop=True)
+# df_test['predicted_count_mean'] = analytic_means
 
 
 
@@ -243,6 +276,6 @@ df_test['predicted_count_mean'] = analytic_means
 # df_test['predicted_count_upper_90'] = pred_upper90
 
 
-# Save results
-df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_anamean_sanitycheck.csv', index=False)
-print("Prediction complete. Results saved to 'prediction_poisson_lr001_anamean_sanitycheck.csv.csv'.")
+# # Save results
+# df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_anamean_sanitycheck.csv', index=False)
+# print("Prediction complete. Results saved to 'prediction_poisson_lr001_anamean_sanitycheck.csv.csv'.")
