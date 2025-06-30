@@ -191,7 +191,7 @@ model = STVGPModel(inducing_points.to(device), constant_mean=log_y_mean).to(devi
 likelihood = PoissonLikelihood().to(device)
 
 # Optimizer & MLL
-optimizer = torch.optim.Adam([{'params': model.parameters()}], lr=0.1)
+optimizer = torch.optim.Adam([{'params': model.parameters()}], lr=0.01)
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_x.size(0))
 
 # Training loop
