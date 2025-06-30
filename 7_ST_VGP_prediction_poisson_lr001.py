@@ -110,7 +110,7 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 # Predict in batches (if test set is large)
 print("Predicting...")
 batch_size = 512
-num_lik_samples = 200
+num_lik_samples = 500
 
 test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False, drop_last=False)
 
