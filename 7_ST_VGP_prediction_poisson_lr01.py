@@ -122,7 +122,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
         
-        samples = pred_dist.sample(torch.Size([num_samples]))
+        samples = pred_dist.sample(torch.Size([num_lik_samples]))
         samples_np = samples.cpu().numpy()
 
         pred_means.append(samples_np.mean(axis=0))
