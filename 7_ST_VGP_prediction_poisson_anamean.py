@@ -110,34 +110,69 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 # Predict in batches (if test set is large)
 print("Predicting...")
 
+# assume test_x (tensor), df_test, model are already defined
 
-# (1) Compute posterior mean & variance on ALL test points in one go
+batch_size = 512   # or smaller if you still get OOM
+loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False)
+
+analytic_means = []
+
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    latent_post = model(test_x)     # MultivariateNormal over all N points
-    m           = latent_post.mean      # shape (N,)
-    v           = latent_post.variance  # shape (N,)
+    for x_batch, in loader:
+        # move batch through GP
+        post = model(x_batch)             # uses only bsz×bsz kernels, not N×N
+        m    = post.mean                  # (bsz,)
+        v    = post.variance              # (bsz,)
 
-# (2) Inspect the spread of v just once
-v_np = v.cpu().numpy()
-print("variance percentiles:",
-      np.percentile(v_np, [50, 90, 95, 99, 100]))
-idx = np.argmax(v_np)
-print("max variance at idx", idx,
-      "→", v_np[idx],
-      " coords:", test_x_np[idx, :3])
+        # analytic Poisson log‐mean, clamped
+        logm = m + 0.5 * v
+        logm = torch.clamp(logm, min=-10.0, max=10.0)
 
-# (3) Compute the analytic Poisson mean, with clamping on the log‐scale
-logm     = m + 0.5 * v
-logm_clp = torch.clamp(logm, min=-10.0, max=10.0)   # caps exp at ~2.2e4
-y_hat    = torch.exp(logm_clp)                     # shape (N,)
+        # back to CPU numpy and store
+        analytic_means.append(logm.exp().cpu().numpy())
 
-# (4) Stick it back into your DataFrame
+        # free any stray GPU memory
+        torch.cuda.empty_cache()
+
+# flatten to (N,)
+analytic_means = np.concatenate(analytic_means)
+assert analytic_means.shape[0] == len(df_test)
+
 df_test = df_test.reset_index(drop=True)
-df_test['predicted_count_mean'] = y_hat.cpu().numpy()
+df_test['predicted_count_mean'] = analytic_means
 
-# And save
-df_test.to_csv('prediction_poisson_analytic_clamped.csv', index=False)
-print("Done! Saved analytic‐mean (clamped) predictions.")
+df_test.to_csv('prediction_poisson_analytic_batched.csv', index=False)
+print("Batched analytic‐mean predictions saved.")
+
+
+
+# # (1) Compute posterior mean & variance on ALL test points in one go
+# with torch.no_grad(), gpytorch.settings.fast_pred_var():
+#     latent_post = model(test_x)     # MultivariateNormal over all N points
+#     m           = latent_post.mean      # shape (N,)
+#     v           = latent_post.variance  # shape (N,)
+
+# # (2) Inspect the spread of v just once
+# v_np = v.cpu().numpy()
+# print("variance percentiles:",
+#       np.percentile(v_np, [50, 90, 95, 99, 100]))
+# idx = np.argmax(v_np)
+# print("max variance at idx", idx,
+#       "→", v_np[idx],
+#       " coords:", test_x_np[idx, :3])
+
+# # (3) Compute the analytic Poisson mean, with clamping on the log‐scale
+# logm     = m + 0.5 * v
+# logm_clp = torch.clamp(logm, min=-10.0, max=10.0)   # caps exp at ~2.2e4
+# y_hat    = torch.exp(logm_clp)                     # shape (N,)
+
+# # (4) Stick it back into your DataFrame
+# df_test = df_test.reset_index(drop=True)
+# df_test['predicted_count_mean'] = y_hat.cpu().numpy()
+
+# # And save
+# df_test.to_csv('prediction_poisson_analytic_clamped.csv', index=False)
+# print("Done! Saved analytic‐mean (clamped) predictions.")
 
 
 
