@@ -90,7 +90,7 @@ df_test = df_test.sample(n=1000, random_state=42).reset_index(drop=True)
 
 
 # Instantiate and load trained parameters
-model = STVGPModel(inducing_points.to(device), constant_mean=log_y_mean).to(device)
+model = STVGPModel(inducing_points.to(device), constant_mean=constant_mean).to(device)
 likelihood = PoissonLikelihood().to(device)
 
 model.load_state_dict(torch.load('stvgp_pois_constmean_lr01.pth', map_location=device))
