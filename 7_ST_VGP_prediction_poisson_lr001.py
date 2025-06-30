@@ -81,11 +81,11 @@ df['longitude'] = df['longitude'].apply(lambda x: float(re.search(r'\-\d+.\d+', 
 df['timestamp'] = pd.to_datetime(df['timestamp'])
 df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
 
+df_test = df[df['ground_truth'].isna()]
 # # Sanity Check with training data
 # print("Sanity check with training data...")
-df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
+# df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
 # Small subset for testing
-# df_test = df[df['ground_truth'].isna()]
 # df_test = df_test.sample(n=1000, random_state=42).reset_index(drop=True)
 
 
@@ -110,7 +110,7 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 # Predict in batches (if test set is large)
 print("Predicting...")
 batch_size = 512
-num_lik_samples = 500
+num_lik_samples = 1000
 
 test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False, drop_last=False)
 
@@ -197,7 +197,7 @@ assert len(pred_upper90)   == len(df_test)
 print('pred_means: ', pred_means[:10])
 print('pred_medians: ', pred_medians[:10])
 print('pred_lower95: ', pred_lower95[:10])
-#print('pred_upper95: ', pred_upper95[:10])
+print('pred_upper95: ', pred_upper95[:10])
 
 # print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
 
@@ -215,5 +215,5 @@ df_test['predicted_count_upper_90'] = pred_upper90
 
 
 # Save results
-df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_sanitycheck2.csv', index=False)
+df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001.csv', index=False)
 print("Prediction complete. Results saved to 'prediction_poisson_lr001.csv'.")
