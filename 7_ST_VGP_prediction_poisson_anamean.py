@@ -114,51 +114,32 @@ num_lik_samples = 200
 
 test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False, drop_last=False)
 
-pred_means = []
-pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
-
+analytic_means =[]
+# pred_means = []
+# pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    latent_post = model(test_x)   # MultivariateNormal over all N test points
-    m = latent_post.mean          # shape (N,)
-    v = latent_post.variance      # shape (N,)
-    y_hat = torch.exp(m + 0.5*v)  # shape (N,)
-df_test['predicted_count_mean'] = y_hat.cpu().numpy()
-
-
-
-
-
-with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(1):
     for x_batch, in tqdm(test_loader):
-        latent_dist = model(x_batch)
-        pred_dist = likelihood(latent_dist)
-        
-        samples = pred_dist.sample(torch.Size([num_lik_samples]))
-        samples_np = samples.cpu().numpy()
+        # Get the posterior over the latent f at these points
+        latent_post = model(x_batch)                    # MultivariateNormal
+        m = latent_post.mean                            # shape (bsz,)
+        v = latent_post.variance                        # shape (bsz,)
 
-        flat = samples_np[:,0,:]
+        # analytic Poisson mean
+        y_hat = torch.exp(m + 0.5 * v)                  # shape (bsz,)
+        analytic_means.append(y_hat.cpu().numpy())
+    
+# flatten into one long array of length N_test
+analytic_means = np.concatenate(analytic_means)
 
-        # debugging: print sample shapes
-        print(f"flatten samples_np shape: {flat.shape}")
-
-        batch_mean = flat.mean(axis=0)
-        batch_lower95 = np.percentile(flat, 2.5, axis=0)
-        batch_upper95 = np.percentile(flat, 97.5, axis=0)
-        batch_lower90 = np.percentile(flat, 5.0, axis=0)
-        batch_upper90 = np.percentile(flat, 95.0, axis=0)
-
-        # debugging: print batch shapes
-        print(f"batch_mean shape: {batch_mean.shape}")
-
-        pred_means.append(batch_mean)
-        pred_lower95.append(batch_lower95)
-        pred_upper95.append(batch_upper95)
-        pred_lower90.append(batch_lower90)
-        pred_upper90.append(batch_upper90)
+df_test = df_test.reset_index(drop=True)
+df_test['predicted_count_mean'] = analytic_means
 
 
-# with torch.no_grad(), gpytorch.settings.fast_pred_var():
+
+
+
+# with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(1):
 #     for x_batch, in tqdm(test_loader):
 #         latent_dist = model(x_batch)
 #         pred_dist = likelihood(latent_dist)
@@ -166,8 +147,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
 #         samples = pred_dist.sample(torch.Size([num_lik_samples]))
 #         samples_np = samples.cpu().numpy()
 
-#         bs = samples_np.shape[-1]
-#         flat = samples_np.reshape(-1, bs)
+#         flat = samples_np[:,0,:]
 
 #         # debugging: print sample shapes
 #         print(f"flatten samples_np shape: {flat.shape}")
@@ -188,43 +168,73 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
 #         pred_upper90.append(batch_upper90)
 
 
-print("Sample shapes in pred_means:")
-for i in [0, -1]:
-    arr = pred_means[i]
-    print(f"  [{i}] type={type(arr)}  shape={getattr(arr, 'shape', None)}")
+# # with torch.no_grad(), gpytorch.settings.fast_pred_var():
+# #     for x_batch, in tqdm(test_loader):
+# #         latent_dist = model(x_batch)
+# #         pred_dist = likelihood(latent_dist)
+        
+# #         samples = pred_dist.sample(torch.Size([num_lik_samples]))
+# #         samples_np = samples.cpu().numpy()
 
-# Turn each list of arrays into one long 1D array
-pred_means      = np.concatenate(pred_means)
-pred_lower95    = np.concatenate(pred_lower95)
-pred_upper95    = np.concatenate(pred_upper95)
-pred_lower90    = np.concatenate(pred_lower90)
-pred_upper90    = np.concatenate(pred_upper90)
+# #         bs = samples_np.shape[-1]
+# #         flat = samples_np.reshape(-1, bs)
 
-# Sanity check
-assert len(pred_means)     == len(df_test)
-assert len(pred_lower95)   == len(df_test)
-assert len(pred_upper95)   == len(df_test)
-assert len(pred_lower90)   == len(df_test)
-assert len(pred_upper90)   == len(df_test)
+# #         # debugging: print sample shapes
+# #         print(f"flatten samples_np shape: {flat.shape}")
 
-print('pred_means: ', pred_means[:10])
-print('pred_lower95: ', pred_lower95[:10])
-print('pred_upper95: ', pred_upper95[:10])
+# #         batch_mean = flat.mean(axis=0)
+# #         batch_lower95 = np.percentile(flat, 2.5, axis=0)
+# #         batch_upper95 = np.percentile(flat, 97.5, axis=0)
+# #         batch_lower90 = np.percentile(flat, 5.0, axis=0)
+# #         batch_upper90 = np.percentile(flat, 95.0, axis=0)
 
-# print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
+# #         # debugging: print batch shapes
+# #         print(f"batch_mean shape: {batch_mean.shape}")
 
-# # Validate dimensions explicitly before assignment:
-# assert len(test_pred_mean) == len(df_test), f"Mismatch: predictions ({len(test_pred_mean)}) vs test data ({len(df_test)})"
+# #         pred_means.append(batch_mean)
+# #         pred_lower95.append(batch_lower95)
+# #         pred_upper95.append(batch_upper95)
+# #         pred_lower90.append(batch_lower90)
+# #         pred_upper90.append(batch_upper90)
 
-# Attach results to test dataframe
-df_test = df_test.reset_index(drop=True)
-df_test['predicted_count_mean'] = pred_means
-df_test['predicted_count_lower'] = pred_lower95
-df_test['predicted_count_upper'] = pred_upper95
-df_test['predicted_count_lower_90'] = pred_lower90
-df_test['predicted_count_upper_90'] = pred_upper90
+
+# print("Sample shapes in pred_means:")
+# for i in [0, -1]:
+#     arr = pred_means[i]
+#     print(f"  [{i}] type={type(arr)}  shape={getattr(arr, 'shape', None)}")
+
+# # Turn each list of arrays into one long 1D array
+# pred_means      = np.concatenate(pred_means)
+# pred_lower95    = np.concatenate(pred_lower95)
+# pred_upper95    = np.concatenate(pred_upper95)
+# pred_lower90    = np.concatenate(pred_lower90)
+# pred_upper90    = np.concatenate(pred_upper90)
+
+# # Sanity check
+# assert len(pred_means)     == len(df_test)
+# assert len(pred_lower95)   == len(df_test)
+# assert len(pred_upper95)   == len(df_test)
+# assert len(pred_lower90)   == len(df_test)
+# assert len(pred_upper90)   == len(df_test)
+
+# print('pred_means: ', pred_means[:10])
+# print('pred_lower95: ', pred_lower95[:10])
+# print('pred_upper95: ', pred_upper95[:10])
+
+# # print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
+
+# # # Validate dimensions explicitly before assignment:
+# # assert len(test_pred_mean) == len(df_test), f"Mismatch: predictions ({len(test_pred_mean)}) vs test data ({len(df_test)})"
+
+# # Attach results to test dataframe
+# df_test = df_test.reset_index(drop=True)
+# df_test['predicted_count_mean'] = pred_means
+# df_test['predicted_count_lower'] = pred_lower95
+# df_test['predicted_count_upper'] = pred_upper95
+# df_test['predicted_count_lower_90'] = pred_lower90
+# df_test['predicted_count_upper_90'] = pred_upper90
 
 
 # Save results
-df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_sanitycheck.csv', index=False)
-print("Prediction complete. Results saved to 'prediction_poisson_lr001.csv'.")
+df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_anamean_sanitycheck.csv', index=False)
+print("Prediction complete. Results saved to 'prediction_poisson_lr001_anamean_sanitycheck.csv.csv'.")
