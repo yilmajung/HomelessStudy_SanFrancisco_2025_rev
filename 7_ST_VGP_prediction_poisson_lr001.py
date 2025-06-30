@@ -126,7 +126,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         samples_np = samples.cpu().numpy()
 
         # debugging: print sample shapes
-        print(f"samples_np shape: {samples_np.shape})
+        print(f"samples_np shape: {samples_np.shape}")
 
         batch_mean = samples_np.mean(axis=0)
         batch_lower95 = np.percentile(samples_np, 2.5, axis=0)
