@@ -125,11 +125,18 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         samples = pred_dist.sample(torch.Size([num_lik_samples]))
         samples_np = samples.cpu().numpy()
 
-        pred_means.append(samples_np.mean(axis=0))
-        pred_lower95.append(np.percentile(samples_np, 2.5, axis=0))
-        pred_upper95.append(np.percentile(samples_np, 97.5, axis=0))
-        pred_lower90.append(np.percentile(samples_np, 5.0, axis=0))
-        pred_upper90.append(np.percentile(samples_np, 95.0, axis=0))
+        batch_mean = samples_np.mean(axis=0)
+        batch_lower95 = np.percentile(samples_np, 2.5, axis=0)
+        batch_upper95 = np.percentile(samples_np, 97.5, axis=0)
+        batch_lower90 = np.percentile(samples_np, 5.0, axis=0)
+        batch_upper90 = np.percentile(samples_np, 95.0, axis=0)
+
+        pred_means.append(batch_mean)
+        pred_lower95.append(batch_lower95)
+        pred_upper95.append(batch_upper95)
+        pred_lower90.append(batch_lower90)
+        pred_upper90.append(batch_upper90)
+
 
 print("Sample shapes in pred_means:")
 for i in [0, -1]:
@@ -142,12 +149,6 @@ pred_lower95    = np.concatenate(pred_lower95)
 pred_upper95    = np.concatenate(pred_upper95)
 pred_lower90    = np.concatenate(pred_lower90)
 pred_upper90    = np.concatenate(pred_upper90)
-
-print(">>> After concat:")
-print("  type(pred_means)   ", type(pred_means))
-print("  pred_means.shape   ", getattr(pred_means, "shape", None))
-print("  len(df_test)       ", len(df_test))
-
 
 # Sanity check
 assert len(pred_means)     == len(df_test)
