@@ -117,7 +117,7 @@ test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=F
 pred_means = []
 pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
 
-with torch.no_grad(), gpytorch.settings.fast_pred_var():
+with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(1):
     for x_batch, in tqdm(test_loader):
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
@@ -125,8 +125,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         samples = pred_dist.sample(torch.Size([num_lik_samples]))
         samples_np = samples.cpu().numpy()
 
-        bs = samples_np.shape[-1]
-        flat = samples_np.reshape(-1, bs)
+        flat = samples_np[:,0,:]
 
         # debugging: print sample shapes
         print(f"flatten samples_np shape: {flat.shape}")
@@ -145,6 +144,36 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         pred_upper95.append(batch_upper95)
         pred_lower90.append(batch_lower90)
         pred_upper90.append(batch_upper90)
+
+
+# with torch.no_grad(), gpytorch.settings.fast_pred_var():
+#     for x_batch, in tqdm(test_loader):
+#         latent_dist = model(x_batch)
+#         pred_dist = likelihood(latent_dist)
+        
+#         samples = pred_dist.sample(torch.Size([num_lik_samples]))
+#         samples_np = samples.cpu().numpy()
+
+#         bs = samples_np.shape[-1]
+#         flat = samples_np.reshape(-1, bs)
+
+#         # debugging: print sample shapes
+#         print(f"flatten samples_np shape: {flat.shape}")
+
+#         batch_mean = flat.mean(axis=0)
+#         batch_lower95 = np.percentile(flat, 2.5, axis=0)
+#         batch_upper95 = np.percentile(flat, 97.5, axis=0)
+#         batch_lower90 = np.percentile(flat, 5.0, axis=0)
+#         batch_upper90 = np.percentile(flat, 95.0, axis=0)
+
+#         # debugging: print batch shapes
+#         print(f"batch_mean shape: {batch_mean.shape}")
+
+#         pred_means.append(batch_mean)
+#         pred_lower95.append(batch_lower95)
+#         pred_upper95.append(batch_upper95)
+#         pred_lower90.append(batch_lower90)
+#         pred_upper90.append(batch_upper90)
 
 
 print("Sample shapes in pred_means:")
