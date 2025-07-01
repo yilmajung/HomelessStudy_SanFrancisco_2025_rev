@@ -92,6 +92,27 @@ df_test = df[df['ground_truth'].isna()]
 # Small subset for testing
 # df_test = df_test.sample(n=1000, random_state=42).reset_index(drop=True)
 
+#=====================
+df_training = df.dropna(subset=['ground_truth'])
+
+# Extract coordinates and covariates
+spatial_coords = df_training[['latitude', 'longitude']].values
+temporal_coords = df_training[['timestamp']].values
+X_covariates = df_training[['max','min','precipitation','total_population','white_ratio','black_ratio','hh_median_income']]
+y_counts = df_training['ground_truth'].values
+
+# Stack and scale
+print("Preparing training tensors...")
+t = np.hstack((spatial_coords, temporal_coords, X_covariates))
+y = y_counts.astype(np.float32)
+scaler = StandardScaler().fit(t)
+x_scaled = scaler.transform(t).astype(np.float32)
+
+# Prepare tensors
+train_x = torch.tensor(x_scaled, dtype=torch.float32)
+train_y = torch.tensor(y, dtype=torch.float32)
+#=====================
+
 
 # Instantiate and load trained parameters
 model = STVGPModel(inducing_points.to(device), constant_mean=constant_mean).to(device)
@@ -99,6 +120,13 @@ likelihood = PoissonLikelihood().to(device)
 
 model.load_state_dict(torch.load('stvgp_pois_constmean2.pth', map_location=device))
 likelihood.load_state_dict(torch.load('likelihood_pois_constmean2.pth', map_location=device))
+
+model.set_train_data(inputs=train_x, targets=train_y, strict=False)
+
+print("spatial ℓ:", model.spatial_kernel.base_kernel.lengthscale)
+print("temporal ℓ:", model.temporal_kernel.base_kernel.lengthscale)
+print("covariate ℓ:", model.covariate_kernel.base_kernel.lengthscale)
+print("spatial σ²:", model.spatial_kernel.outputscale)
 
 model.eval()
 likelihood.eval()
