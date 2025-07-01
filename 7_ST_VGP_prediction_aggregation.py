@@ -204,9 +204,11 @@ for day, grp in tqdm(df_test.groupby('timestamp'),
         size=(S, nbox)
     )
     # Convert to Poisson rates
+    max_lambda = 1e3
     lam_samps = np.exp(f_samps)
+    lam_safe = np.minimum(lam_samps, max_lambda)
     # Sample counts Y ∼ Poisson(lam)
-    y_samps   = np.random.poisson(lam_samps)
+    y_samps   = np.random.poisson(lam_safe)
     # Sum across boxes → city total per replicate
     city_samps = y_samps.sum(axis=1)       # shape (S,)
 
