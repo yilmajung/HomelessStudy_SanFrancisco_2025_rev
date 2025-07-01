@@ -118,13 +118,18 @@ test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=F
 
 pred_means = []
 pred_medians = []
+pred_rate_medians = []
 pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
 
 with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(1):
-    for x_batch, in tqdm(test_loader):
+    for x_batch, in tqdm(test_loader, desc='Predicting batches...'):
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
         
+        f_mean = latent_dist.mean
+        batch_rmed = torch.exp(f_mean)
+        pred_rate_medians.append(batch_rmed.cpu().numpy())
+
         samples = pred_dist.sample(torch.Size([num_lik_samples]))
         samples_np = samples.cpu().numpy()
         samples_np = samples_np[:,0,:]
@@ -148,6 +153,7 @@ for i in [0, -1]:
     print(f"  [{i}] type={type(arr)}  shape={getattr(arr, 'shape', None)}")
 
 # Turn each list of arrays into one long 1D array
+pred_rate_medians = np.concatenate(pred_rate_medians)
 pred_means      = np.concatenate(pred_means)
 pred_medians    = np.concatenate(pred_medians)
 pred_lower95    = np.concatenate(pred_lower95)
@@ -156,6 +162,7 @@ pred_lower90    = np.concatenate(pred_lower90)
 pred_upper90    = np.concatenate(pred_upper90)
 
 # Sanity check
+assert pred_rate_medians.shape[0] == len(df_test)
 assert len(pred_means)     == len(df_test)
 assert len(pred_medians)  == len(df_test)
 assert len(pred_lower95)   == len(df_test)
@@ -165,7 +172,7 @@ assert len(pred_upper90)   == len(df_test)
 
 print('pred_means: ', pred_means[:10])
 print('pred_medians: ', pred_medians[:10])
-print('pred_lower95: ', pred_lower95[:10])
+print('pred_rate_medians: ', pred_rate_medians[:10])
 print('pred_upper95: ', pred_upper95[:10])
 
 # print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
@@ -177,6 +184,7 @@ print('pred_upper95: ', pred_upper95[:10])
 df_test = df_test.reset_index(drop=True)
 df_test['predicted_count_mean'] = pred_means
 df_test['predicted_count_median'] = pred_medians
+df_test['predicted_count_rate_median'] = pred_rate_medians
 df_test['predicted_count_lower'] = pred_lower95
 df_test['predicted_count_upper'] = pred_upper95
 df_test['predicted_count_lower_90'] = pred_lower90
