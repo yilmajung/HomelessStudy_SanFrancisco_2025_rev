@@ -157,7 +157,7 @@ mll = VariationalELBO(likelihood, model, num_data=len(train_y))
 optimizer = torch.optim.Adam(
     [
         {'params': model.parameters()},
-        {'params': likelihood.parameter()}
+        {'params': likelihood.parameters()}
     ], lr=0.01
 )
 
