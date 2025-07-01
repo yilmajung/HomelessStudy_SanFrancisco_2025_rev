@@ -97,7 +97,7 @@ df_training = df.dropna(subset=['ground_truth'])
 
 # Extract coordinates and covariates
 spatial_coords = df_training[['latitude', 'longitude']].values
-temporal_coords = df_training[['timestamp_sec']].values
+temporal_coords = df_training[['timestamp']].values
 X_covariates = df_training[['max','min','precipitation','total_population','white_ratio','black_ratio','hh_median_income']]
 y_counts = df_training['ground_truth'].values
 

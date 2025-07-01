@@ -21,8 +21,8 @@ df['latitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[0]))
 df['longitude'] = df['center_latlon'].apply(lambda x: str(x.split(', ')[1]))
 df['latitude'] = df['latitude'].apply(lambda x: float(re.search(r'\d+.\d+', x).group()))
 df['longitude'] = df['longitude'].apply(lambda x: float(re.search(r'\-\d+.\d+', x).group()))
-df['timestamp_sec'] = pd.to_datetime(df['timestamp'])
-df['timestamp_sec'] = (df['timestamp_sec'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
 
 # Separate training data
 df_training = df.dropna(subset=['ground_truth'])
