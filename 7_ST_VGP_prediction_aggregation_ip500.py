@@ -172,6 +172,7 @@ df_test['rate_upper95']     = np.concatenate(pred_rate_upper95)
 df_test['rate_lower90']     = np.concatenate(pred_rate_lower90)
 df_test['rate_upper90']     = np.concatenate(pred_rate_upper90)
 
+pd.set_option('display.max_columns', None)
 print(df_test.head())
 
 # Monte Carlo aggregation to city‐daily totals
