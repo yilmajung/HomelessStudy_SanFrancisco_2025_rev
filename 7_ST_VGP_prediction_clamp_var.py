@@ -152,7 +152,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         rate_upper95 = torch.exp(log_u95)
         rate_lower90 = torch.exp(log_l90)
         rate_upper90 = torch.exp(log_u90)
-        rate_std = torch.exp(s))
+        rate_std = torch.exp(s)
 
         # Collect into lists
         rate_median_list .append(rate_median.cpu().numpy())
