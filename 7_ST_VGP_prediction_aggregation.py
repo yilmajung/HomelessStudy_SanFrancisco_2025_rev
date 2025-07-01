@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import joblib
 import torch.nn.functional as F
+import re
 
 # Load the necessary files
 print("Loading saved artifacts...")
