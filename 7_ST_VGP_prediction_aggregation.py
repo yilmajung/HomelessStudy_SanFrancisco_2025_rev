@@ -135,15 +135,17 @@ pred_rate_upper90 = []
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
     for (x_batch,) in tqdm(test_loader, desc="Per‐box stats"):
         post = model(x_batch)          # MultivariateNormal over f
-        m    = post.mean               # shape (bsz,)
-        v    = post.variance           # shape (bsz,)
-        s    = v.sqrt()                # σ_f
+        m = post.mean               # shape (bsz,)
+        v = post.variance           # shape (bsz,)
+        print(f"  m → min {m.min():.2f}, max {m.max():.2f},  v → min {v.min():.2f}, max {v.max():.2f}")
+        m = m.clamp(min=-3.0, max=3.0)  
+        v = v.clamp(max=4.0)
+        s = v.sqrt()                # σ_f
 
         # E[Y] = E[e^f] = exp(m + ½ v)
         E_Y    = torch.exp(m + 0.5 * v)
-        # Var[e^f] = exp(2m + 2v) – exp(2m + v)
-        Var_e_f = torch.exp(2*m + 2*v) - torch.exp(2*m + v)
-        # total Var[Y] = E[Y] + Var[e^f]
+        exp_v_minus1 = torch.expm1(v)
+        Var_e_f = E_Y * E_Y * exp_v_minus1
         Var_Y   = E_Y + Var_e_f
 
         # log‐normal rate summaries
@@ -172,6 +174,7 @@ df_test['rate_upper95']     = np.concatenate(pred_rate_upper95)
 df_test['rate_lower90']     = np.concatenate(pred_rate_lower90)
 df_test['rate_upper90']     = np.concatenate(pred_rate_upper90)
 
+pd.set_option('display.max_columns', None)
 print(df_test.head())
 
 # Monte Carlo aggregation to city‐daily totals
