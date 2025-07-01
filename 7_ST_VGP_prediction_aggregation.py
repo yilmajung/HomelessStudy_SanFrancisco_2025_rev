@@ -158,7 +158,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         post = model(x_batch)          # MultivariateNormal over f
         m = post.mean               # shape (bsz,)
         v = post.variance           # shape (bsz,)
-        #print(f"  m → min {m.min():.2f}, max {m.max():.2f},  v → min {v.min():.2f}, max {v.max():.2f}")
+        print(f"  m → min {m.min():.2f}, max {m.max():.2f},  v → min {v.min():.2f}, max {v.max():.2f}")
         m = m.clamp(min=-3.0, max=3.0)  
         v = v.clamp(max=4.0)
         s = v.sqrt()                # σ_f
