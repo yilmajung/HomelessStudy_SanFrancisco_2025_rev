@@ -84,7 +84,7 @@ df['timestamp'] = pd.to_datetime(df['timestamp'])
 df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
 
 df_test = df[df['ground_truth'].isna()]
-# # Sanity Check with training data
+# Sanity Check with training data
 # print("Sanity check with training data...")
 # df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
 # Small subset for testing
@@ -118,13 +118,34 @@ test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=F
 
 pred_means = []
 pred_medians = []
+pred_rate_medians = []
+pred_rate_lower95, pred_rate_upper95, pred_rate_lower90, pred_rate_upper90  = [], [], [], []
 pred_lower95, pred_upper95, pred_lower90, pred_upper90 = [], [], [], []
 
+# z-score the predictions
+z95 = 1.96
+z90 = 1.645
+
 with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_likelihood_samples(1):
-    for x_batch, in tqdm(test_loader):
+    for x_batch, in tqdm(test_loader, desc='Predicting batches...'):
         latent_dist = model(x_batch)
         pred_dist = likelihood(latent_dist)
         
+        f_mean = latent_dist.mean
+        v = latent_dist.variance
+        s = v.sqrt()
+
+        batch_rmed = torch.exp(f_mean)
+        rl95 = torch.exp(f_mean - z95 * s)
+        ru95 = torch.exp(f_mean + z95 * s)
+        rl90 = torch.exp(f_mean - z90 * s)
+        ru90 = torch.exp(f_mean + z90 * s)
+        pred_rate_medians.append(batch_rmed.cpu().numpy())
+        pred_rate_lower95.append(rl95.cpu().numpy())
+        pred_rate_upper95.append(ru95.cpu().numpy())
+        pred_rate_lower90.append(rl90.cpu().numpy())
+        pred_rate_upper90.append(ru90.cpu().numpy())
+
         samples = pred_dist.sample(torch.Size([num_lik_samples]))
         samples_np = samples.cpu().numpy()
         samples_np = samples_np[:,0,:]
@@ -148,6 +169,11 @@ for i in [0, -1]:
     print(f"  [{i}] type={type(arr)}  shape={getattr(arr, 'shape', None)}")
 
 # Turn each list of arrays into one long 1D array
+pred_rate_medians = np.concatenate(pred_rate_medians)
+pred_rate_lower95 = np.concatenate(pred_rate_lower95)
+pred_rate_upper95 = np.concatenate(pred_rate_upper95)
+pred_rate_lower90 = np.concatenate(pred_rate_lower90)
+pred_rate_upper90 = np.concatenate(pred_rate_upper90)
 pred_means      = np.concatenate(pred_means)
 pred_medians    = np.concatenate(pred_medians)
 pred_lower95    = np.concatenate(pred_lower95)
@@ -156,6 +182,7 @@ pred_lower90    = np.concatenate(pred_lower90)
 pred_upper90    = np.concatenate(pred_upper90)
 
 # Sanity check
+assert pred_rate_medians.shape[0] == len(df_test)
 assert len(pred_means)     == len(df_test)
 assert len(pred_medians)  == len(df_test)
 assert len(pred_lower95)   == len(df_test)
@@ -165,7 +192,7 @@ assert len(pred_upper90)   == len(df_test)
 
 print('pred_means: ', pred_means[:10])
 print('pred_medians: ', pred_medians[:10])
-print('pred_lower95: ', pred_lower95[:10])
+print('pred_rate_medians: ', pred_rate_medians[:10])
 print('pred_upper95: ', pred_upper95[:10])
 
 # print("total preds:", test_pred_mean.shape[0], "expected:", test_x.size(0))
@@ -181,6 +208,11 @@ df_test['predicted_count_lower'] = pred_lower95
 df_test['predicted_count_upper'] = pred_upper95
 df_test['predicted_count_lower_90'] = pred_lower90
 df_test['predicted_count_upper_90'] = pred_upper90
+df_test['predicted_count_rate_median'] = pred_rate_medians
+df_test['predicted_count_rate_lower_95'] = pred_rate_lower95
+df_test['predicted_count_rate_upper_95'] = pred_rate_upper95
+df_test['predicted_count_rate_lower_90'] = pred_rate_lower90
+df_test['predicted_count_rate_upper_90'] = pred_rate_upper90
 
 
 # Save results
