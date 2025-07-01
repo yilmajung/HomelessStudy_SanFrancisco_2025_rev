@@ -114,7 +114,7 @@ test_x = torch.tensor(scaler.transform(test_x_np), dtype=torch.float32).to(devic
 # Predict in batches (if test set is large)
 print("Predicting...")
 batch_size = 512
-num_lik_samples = 1000
+num_lik_samples = 500
 
 test_loader = DataLoader(TensorDataset(test_x), batch_size=batch_size, shuffle=False, drop_last=False)
 
@@ -133,7 +133,7 @@ pred_rate_upper90 = []
 
 # Per‐box predictive mean & variance of Y, plus log‐normal rate CI
 with torch.no_grad(), gpytorch.settings.fast_pred_var():
-    for (x_batch,), in tqdm(test_loader, desc="Per‐box stats"):
+    for (x_batch,) in tqdm(test_loader, desc="Per‐box stats"):
         post = model(x_batch)          # MultivariateNormal over f
         m    = post.mean               # shape (bsz,)
         v    = post.variance           # shape (bsz,)
