@@ -13,9 +13,9 @@ import re
 # Load the necessary files
 print("Loading saved artifacts...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-scaler = joblib.load('scaler_pois_constmean_ip700.joblib')
-constant_mean = joblib.load('constant_mean_pois_ip700.pkl')
-inducing_points = torch.load('inducing_points_pois_constmean_ip700.pt', map_location=device)
+scaler = joblib.load('scaler_pois_constmean2.joblib')
+constant_mean = joblib.load('constant_mean_pois2.pkl')
+inducing_points = torch.load('inducing_points_pois_constmean2.pt', map_location=device)
 
 # Define the model and likelihood classes exactly as in training
 # Define ST-VGP model
@@ -97,8 +97,8 @@ df_test = df[df['ground_truth'].isna()]
 model = STVGPModel(inducing_points.to(device), constant_mean=constant_mean).to(device)
 likelihood = PoissonLikelihood().to(device)
 
-model.load_state_dict(torch.load('stvgp_pois_constmean_ip700.pth', map_location=device))
-likelihood.load_state_dict(torch.load('likelihood_pois_constmean_ip700.pth', map_location=device))
+model.load_state_dict(torch.load('stvgp_pois_constmean2.pth', map_location=device))
+likelihood.load_state_dict(torch.load('likelihood_pois_constmean2.pth', map_location=device))
 
 model.eval()
 likelihood.eval()
@@ -233,5 +233,5 @@ df_daily = (
 print(df_daily.head())
 
 # save results
-df_daily.to_csv('st_vgp_pois_constmean_ip700_daily_totals.csv', index=False)
-df_test.to_csv('st_vgp_pois_constmean_ip700_test_predictions.csv', index=False)
+df_daily.to_csv('st_vgp_pois_constmean_ip500_daily_totals.csv', index=False)
+df_test.to_csv('st_vgp_pois_constmean_ip500_test_predictions.csv', index=False)
