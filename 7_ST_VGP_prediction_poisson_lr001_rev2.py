@@ -61,6 +61,8 @@ class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
     def forward(self, function_samples, **kwargs):
         # The function_samples should be on log-scale
         rate = function_samples.exp()
+        rate = torch.nan_to_num(rate, nan=1e-6, posinf=1e6, neginf=1e-6)
+        rate = rate.clamp(min=1e-6, max=1e6)  # Ensure rate is positive
         return torch.distributions.Poisson(rate)
     
     def expected_log_prob(self, target, function_dist, **kwargs):
