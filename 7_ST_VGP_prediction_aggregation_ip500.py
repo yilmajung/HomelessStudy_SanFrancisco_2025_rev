@@ -121,16 +121,22 @@ likelihood = PoissonLikelihood().to(device)
 model.load_state_dict(torch.load('stvgp_pois_constmean2.pth', map_location=device))
 likelihood.load_state_dict(torch.load('likelihood_pois_constmean2.pth', map_location=device))
 
-#model.set_train_data(inputs=train_x, targets=train_y, strict=False)
+# immediately after model.load_state_dict(...)
+sp = model.spatial_kernel
+tm = model.temporal_kernel
+cv = model.covariate_kernel
 
-print("Spatial kernel:", model.spatial_kernel)
-print("Temporal kernel:", model.temporal_kernel)
-print("Covariate kernel:", model.covariate_kernel)
+print(f"spatial lengthscale = {sp.base_kernel.lengthscale.item():.4f}")
+print(f"spatial variance    = {sp.outputscale.item():.4f}")
+print(f"temporal lengthscale= {tm.base_kernel.lengthscale.item():.4f}")
+print(f"temporal variance   = {tm.outputscale.item():.4f}")
+print(f"covariate lengthsc. = {cv.base_kernel.lengthscale.detach().cpu().numpy()}")
+print(f"covariate variance  = {cv.outputscale.item():.4f}")
 
-# print("spatial ℓ:", model.spatial_kernel.base_kernel.lengthscale)
-# print("temporal ℓ:", model.temporal_kernel.base_kernel.lengthscale)
-# print("covariate ℓ:", model.covariate_kernel.base_kernel.lengthscale)
-# print("spatial σ²:", model.spatial_kernel.outputscale)
+saved = torch.load('stvgp_pois_constmean2.pth', map_location=device)
+missing, unexpected = model.load_state_dict(saved, strict=False)
+print("MISSING:", missing)
+print("UNEXPECTED:", unexpected)
 
 model.eval()
 likelihood.eval()
