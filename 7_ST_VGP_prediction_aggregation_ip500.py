@@ -121,7 +121,7 @@ likelihood = PoissonLikelihood().to(device)
 model.load_state_dict(torch.load('stvgp_pois_constmean2.pth', map_location=device))
 likelihood.load_state_dict(torch.load('likelihood_pois_constmean2.pth', map_location=device))
 
-# immediately after model.load_state_dict(...)
+# debugging lines
 sp = model.spatial_kernel
 tm = model.temporal_kernel
 cv = model.covariate_kernel

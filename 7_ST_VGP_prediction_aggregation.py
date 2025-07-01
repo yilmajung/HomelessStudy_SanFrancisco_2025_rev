@@ -121,6 +121,11 @@ likelihood = PoissonLikelihood().to(device)
 model.load_state_dict(torch.load('stvgp_pois_constmean_ip700.pth', map_location=device))
 likelihood.load_state_dict(torch.load('likelihood_pois_constmean_ip700.pth', map_location=device))
 
+# debugging lines
+sp = model.spatial_kernel
+tm = model.temporal_kernel
+cv = model.covariate_kernel
+
 print(f"spatial lengthscale = {sp.base_kernel.lengthscale.item():.4f}")
 print(f"spatial variance    = {sp.outputscale.item():.4f}")
 print(f"temporal lengthscale= {tm.base_kernel.lengthscale.item():.4f}")
