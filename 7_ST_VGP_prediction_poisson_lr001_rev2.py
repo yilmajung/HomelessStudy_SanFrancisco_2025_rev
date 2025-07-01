@@ -83,10 +83,10 @@ df['longitude'] = df['longitude'].apply(lambda x: float(re.search(r'\-\d+.\d+', 
 df['timestamp'] = pd.to_datetime(df['timestamp'])
 df['timestamp'] = (df['timestamp'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
 
-df_test = df[df['ground_truth'].isna()]
-# # Sanity Check with training data
-# print("Sanity check with training data...")
-# df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
+# df_test = df[df['ground_truth'].isna()]
+# Sanity Check with training data
+print("Sanity check with training data...")
+df_test = df.dropna(subset=['ground_truth']) # actually this is the training data
 # Small subset for testing
 # df_test = df_test.sample(n=1000, random_state=42).reset_index(drop=True)
 
@@ -173,16 +173,16 @@ print('pred_upper95: ', pred_upper95[:10])
 # # Validate dimensions explicitly before assignment:
 # assert len(test_pred_mean) == len(df_test), f"Mismatch: predictions ({len(test_pred_mean)}) vs test data ({len(df_test)})"
 
-# Attach results to test dataframe
-df_test = df_test.reset_index(drop=True)
-df_test['predicted_count_mean'] = pred_means
-df_test['predicted_count_median'] = pred_medians
-df_test['predicted_count_lower'] = pred_lower95
-df_test['predicted_count_upper'] = pred_upper95
-df_test['predicted_count_lower_90'] = pred_lower90
-df_test['predicted_count_upper_90'] = pred_upper90
+# # Attach results to test dataframe
+# df_test = df_test.reset_index(drop=True)
+# df_test['predicted_count_mean'] = pred_means
+# df_test['predicted_count_median'] = pred_medians
+# df_test['predicted_count_lower'] = pred_lower95
+# df_test['predicted_count_upper'] = pred_upper95
+# df_test['predicted_count_lower_90'] = pred_lower90
+# df_test['predicted_count_upper_90'] = pred_upper90
 
 
-# Save results
-df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_rev2.csv', index=False)
-print("Prediction complete. Results saved to 'prediction_poisson_lr001_rev2.csv'.")
+# # Save results
+# df_test.to_csv('~/HomelessStudy_SanFrancisco_2025_rev_ISTServer/prediction_poisson_lr001_rev2.csv', index=False)
+# print("Prediction complete. Results saved to 'prediction_poisson_lr001_rev2.csv'.")
