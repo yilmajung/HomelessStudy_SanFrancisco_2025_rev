@@ -101,6 +101,21 @@ model.load_state_dict(torch.load('stvgp_pois_constmean_ip700.pth', map_location=
 likelihood.load_state_dict(torch.load('likelihood_pois_constmean_ip700.pth', map_location=device))
 
 # debugging lines
+vd = model.variational_strategy._variational_distribution
+print("variational-mean (first 5):", vd.variational_mean[:5])
+# extract the Cholesky scale_tril diagonal:
+scale_tril = vd.chol_variational_covar.diag()
+print("variational-scale_tril diag (first 5):", scale_tril[:5])
+
+# compare the ones I passed in vs. the ones stored in the model
+Z0 = inducing_points.cpu().numpy()
+Z1 = model.variational_strategy.inducing_points.detach().cpu().numpy()
+print("inducing[ :3 ] passed in:\n", Z0[:3])
+print("inducing[ :3 ] in model:\n",  Z1[:3])
+
+ckpt = torch.load('stvgp_pois_constmean_ip700.pth', map_location=device)
+print("all keys in checkpoint:\n", ckpt.keys())
+
 for name, ker in [
     ("spatial",   model.spatial_kernel),
     ("temporal",  model.temporal_kernel),
