@@ -141,6 +141,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var(), gpytorch.settings.num_l
         rl90 = torch.exp(f_mean - z90 * s)
         ru90 = torch.exp(f_mean + z90 * s)
         pred_rate_medians.append(batch_rmed.cpu().numpy())
+        pred_rate_variances.append(v.cpu().numpy())
         pred_rate_lower95.append(rl95.cpu().numpy())
         pred_rate_upper95.append(ru95.cpu().numpy())
         pred_rate_lower90.append(rl90.cpu().numpy())
@@ -170,6 +171,7 @@ for i in [0, -1]:
 
 # Turn each list of arrays into one long 1D array
 pred_rate_medians = np.concatenate(pred_rate_medians)
+pred_rate_variances = np.concatenate(pred_rate_variances)
 pred_rate_lower95 = np.concatenate(pred_rate_lower95)
 pred_rate_upper95 = np.concatenate(pred_rate_upper95)
 pred_rate_lower90 = np.concatenate(pred_rate_lower90)
@@ -209,6 +211,7 @@ df_test['predicted_count_upper'] = pred_upper95
 df_test['predicted_count_lower_90'] = pred_lower90
 df_test['predicted_count_upper_90'] = pred_upper90
 df_test['predicted_count_rate_median'] = pred_rate_medians
+df_test['predicted_count_rate_variance'] = pred_rate_variances
 df_test['predicted_count_rate_lower_95'] = pred_rate_lower95
 df_test['predicted_count_rate_upper_95'] = pred_rate_upper95
 df_test['predicted_count_rate_lower_90'] = pred_rate_lower90
