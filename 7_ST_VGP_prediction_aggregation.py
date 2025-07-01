@@ -174,7 +174,7 @@ df_test['rate_upper90']     = np.concatenate(pred_rate_upper90)
 
 
 # Monte Carlo aggregation to city‐daily totals
-S         = 1000
+S         = 500
 daily_out = []
 n_days    = df_test['timestamp'].nunique()
 
@@ -197,17 +197,17 @@ for day, grp in tqdm(df_test.groupby('timestamp'),
     mu_f    = np.log(med)
     sigma_f = (np.log(med) - np.log(l95)) / z95
 
-    # 2a) sample latent f ∼ N(mu_f, sigma_f²)
+    # Sample latent f ∼ N(mu_f, sigma_f²)
     f_samps = np.random.normal(
         loc=mu_f[None, :],
         scale=sigma_f[None, :],
         size=(S, nbox)
     )
-    # 2b) convert to Poisson rates
+    # Convert to Poisson rates
     lam_samps = np.exp(f_samps)
-    # 2c) sample counts Y ∼ Poisson(lam)
+    # Sample counts Y ∼ Poisson(lam)
     y_samps   = np.random.poisson(lam_samps)
-    # 2d) sum across boxes → city total per replicate
+    # Sum across boxes → city total per replicate
     city_samps = y_samps.sum(axis=1)       # shape (S,)
 
     # 2e) store daily summary
