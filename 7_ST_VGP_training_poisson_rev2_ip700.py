@@ -30,7 +30,7 @@ df_training = df.dropna(subset=['ground_truth'])
 
 # Extract coordinates and covariates
 spatial_coords = df_training[['latitude', 'longitude']].values
-temporal_coords = df_training[['timestamp_sec']].values
+temporal_coords = df_training[['timestamp']].values
 X_covariates = df_training[['max','min','precipitation','total_population','white_ratio','black_ratio','hh_median_income']]
 y_counts = df_training['ground_truth'].values
 
@@ -56,7 +56,7 @@ inducing_df = df_training[df_training['bboxid'].isin(inducing_bbox_ids)].drop_du
 
 # Extract coordinates
 Z_spatial = inducing_df[['latitude','longitude']].values
-Z_temporal = inducing_df[['timestamp_sec']].values
+Z_temporal = inducing_df[['timestamp']].values
 Z_covariates = inducing_df[['max','min','precipitation','total_population','white_ratio','black_ratio','hh_median_income']].values
 
 # Quick check for NaN values
