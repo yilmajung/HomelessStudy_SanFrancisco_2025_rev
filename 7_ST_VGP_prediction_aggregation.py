@@ -122,16 +122,19 @@ model.load_state_dict(torch.load('stvgp_pois_constmean_ip700.pth', map_location=
 likelihood.load_state_dict(torch.load('likelihood_pois_constmean_ip700.pth', map_location=device))
 
 # debugging lines
-sp = model.spatial_kernel
-tm = model.temporal_kernel
-cv = model.covariate_kernel
-
-print(f"spatial lengthscale = {sp.base_kernel.lengthscale.item():.4f}")
-print(f"spatial variance    = {sp.outputscale.item():.4f}")
-print(f"temporal lengthscale= {tm.base_kernel.lengthscale.item():.4f}")
-print(f"temporal variance   = {tm.outputscale.item():.4f}")
-print(f"covariate lengthsc. = {cv.base_kernel.lengthscale.detach().cpu().numpy()}")
-print(f"covariate variance  = {cv.outputscale.item():.4f}")
+for name, ker in [
+    ("spatial",   model.spatial_kernel),
+    ("temporal",  model.temporal_kernel),
+    ("covariate", model.covariate_kernel),
+]:
+    ls = ker.base_kernel.lengthscale.detach().cpu().numpy()
+    vs = ker.outputscale.detach().cpu().item()
+    
+    if ls.size == 1:
+        print(f"{name} lengthscale = {ls.item():.4f}")
+    else:
+        print(f"{name} lengthscales = {ls.tolist()}")
+    print(f"{name} variance    = {vs:.4f}")
 
 saved = torch.load('stvgp_pois_constmean_ip700.pth', map_location=device)
 missing, unexpected = model.load_state_dict(saved, strict=False)
@@ -176,7 +179,7 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         post = model(x_batch)          # MultivariateNormal over f
         m = post.mean               # shape (bsz,)
         v = post.variance           # shape (bsz,)
-        print(f"  m → min {m.min():.2f}, max {m.max():.2f},  v → min {v.min():.2f}, max {v.max():.2f}")
+        #print(f"  m → min {m.min():.2f}, max {m.max():.2f},  v → min {v.min():.2f}, max {v.max():.2f}")
         m = m.clamp(min=-3.0, max=3.0)  
         v = v.clamp(max=4.0)
         s = v.sqrt()                # σ_f
