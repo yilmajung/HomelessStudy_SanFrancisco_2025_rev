@@ -220,6 +220,10 @@ for epoch in tqdm(range(500)):
         total_loss += loss.item()
     if epoch % 50 == 0:
         print(f"Epoch {epoch}, Loss {total_loss:.3f}")
+        vd = model.variational_strategy._variational_distribution
+        print(f"\n=== After epoch {epoch} ===")
+        print(" variational_mean[:5]:", vd.variational_mean[:5].cpu().detach().numpy())
+        print(" scale_tril diag[:5]:", vd.chol_variational_covar.diag()[:5].cpu().detach().numpy())
 
 # Save
 torch.save(model.state_dict(), 'stvgp_pois_velbo_t400r300.pth')
