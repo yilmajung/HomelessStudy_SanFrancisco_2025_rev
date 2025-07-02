@@ -150,8 +150,8 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
         m = post.mean               # shape (bsz,)
         v = post.variance           # shape (bsz,)
         #print(f"  m → min {m.min():.2f}, max {m.max():.2f},  v → min {v.min():.2f}, max {v.max():.2f}")
-        m = m.clamp(min=-5.0, max=5.0)  
-        v = v.clamp(max=10.0)
+        #m = m.clamp(min=-5.0, max=5.0)  
+        #v = v.clamp(max=20.0)
         s = v.sqrt()                # σ_f
 
         # E[Y] = E[e^f] = exp(m + ½ v)
@@ -248,5 +248,5 @@ df_daily = (
 print(df_daily.head())
 
 # save results
-df_daily.to_csv('st_vgp_pois_constmean_t400r300_daily_totals2.csv', index=False)
-df_test.to_csv('st_vgp_pois_constmean_t400r300_test_predictions2.csv', index=False)
+df_daily.to_csv('st_vgp_pois_constmean_t400r300_daily_totals2_noclamp.csv', index=False)
+df_test.to_csv('st_vgp_pois_constmean_t400r300_test_predictions2_noclamp.csv', index=False)
