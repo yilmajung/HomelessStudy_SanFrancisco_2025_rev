@@ -161,6 +161,10 @@ optimizer = torch.optim.Adam(
     ], lr=0.01
 )
 
+for name, param in model.named_parameters():
+    if "variational" in name:
+        print(name, "requires_grad?", param.requires_grad)
+
 # Training loop
 print("Starting training...")
 
@@ -172,6 +176,8 @@ for epoch in tqdm(range(500)):
         output = model(x_b)
         loss = -mll(output, y_b)
         loss.backward()
+        print("raw_variational_loc.grad[:5] =", 
+              model.variational_strategy._variational_distribution.raw_variational_loc.grad[:5])
         optimizer.step()
         total_loss += loss.item()
     if epoch % 50 == 0:
