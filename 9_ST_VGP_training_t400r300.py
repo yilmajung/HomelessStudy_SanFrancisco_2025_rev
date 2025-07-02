@@ -11,6 +11,7 @@ from sklearn.preprocessing import StandardScaler
 import joblib
 import torch.nn.functional as F
 from gpytorch.mlls import VariationalELBO
+from gpytorch.likelihoods import PoissonLikelihood
 
 # Load and preprocess the dataset
 print("Loading dataset...")
@@ -125,23 +126,23 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
-class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
-    def __init__(self):
-        super().__init__()
-        # No parameters for vanilla Poisson
+# class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
+#     def __init__(self):
+#         super().__init__()
+#         # No parameters for vanilla Poisson
 
-    def forward(self, function_samples, **kwargs):
-        # The function_samples should be on log-scale
-        rate = function_samples.exp()
-        rate = torch.nan_to_num(rate, nan=1e-6, posinf=1e6, neginf=1e-6)
-        rate = rate.clamp(min=1e-6, max=1e6)  # Ensure rate is positive
-        return torch.distributions.Poisson(rate)
+#     def forward(self, function_samples, **kwargs):
+#         # The function_samples should be on log-scale
+#         rate = function_samples.exp()
+#         rate = torch.nan_to_num(rate, nan=1e-6, posinf=1e6, neginf=1e-6)
+#         rate = rate.clamp(min=1e-6, max=1e6)  # Ensure rate is positive
+#         return torch.distributions.Poisson(rate)
     
-    def expected_log_prob(self, target, function_dist, **kwargs):
-        mean = function_dist.mean
-        rate = mean.exp()
-        dist = torch.distributions.Poisson(rate)
-        return dist.log_prob(target)
+#     def expected_log_prob(self, target, function_dist, **kwargs):
+#         mean = function_dist.mean
+#         rate = mean.exp()
+#         dist = torch.distributions.Poisson(rate)
+#         return dist.log_prob(target)
 
 
 # Device
