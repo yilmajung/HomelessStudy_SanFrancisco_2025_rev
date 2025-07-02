@@ -130,28 +130,22 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 class QuadraturePoisson(_OneDimensionalLikelihood):
     def __init__(self, num_locs=20):
         super().__init__()
-        # Instantiate the 1-D Gauss–Hermite integrator
-        # The `True` says “standardize inputs to mean/var = 0/1”
-        self.quad = GaussHermiteQuadrature1D(num_locs, True)
+        # Only pass the number of quadrature nodes
+        self.quad = GaussHermiteQuadrature1D(num_locs)
 
     def forward(self, function_samples, **kwargs):
-        # For sampling/predictive draws
         rates = function_samples.exp().clamp(min=1e-6)
         return torch.distributions.Poisson(rates)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
-        # target: (batch,)
-        # function_dist.mean & .variance: (batch,)
         def log_prob_fn(f):
-            # f: (num_locs, batch)
-            # we need Poisson.log_prob for each GH node
-            # so expand target to (num_locs, batch)
             return torch.distributions.Poisson(f.exp().clamp(min=1e-6)) \
                         .log_prob(target.unsqueeze(0))
-        # This returns a (batch,) tensor of ∑ w_i * log p(y|f_i)
-        return self.quad(log_prob_fn,
-                         function_dist.mean,
-                         function_dist.variance)
+        return self.quad(
+            log_prob_fn,
+            function_dist.mean,
+            function_dist.variance
+        )
 
 
 # class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
