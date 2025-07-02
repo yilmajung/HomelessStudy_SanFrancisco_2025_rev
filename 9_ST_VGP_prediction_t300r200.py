@@ -55,23 +55,25 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
-class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
-    def __init__(self):
+class QuadraturePoisson(_OneDimensionalLikelihood):
+    def __init__(self, num_locs=20):
         super().__init__()
-        # No parameters for vanilla Poisson
+        # Only pass the number of nodes
+        self.quad = GaussHermiteQuadrature1D(num_locs)
 
     def forward(self, function_samples, **kwargs):
-        # The function_samples should be on log-scale
-        rate = function_samples.exp()
-        rate = torch.nan_to_num(rate, nan=1e-6, posinf=1e6, neginf=1e-6)
-        rate = rate.clamp(min=1e-6, max=1e6)  # Ensure rate is positive
-        return torch.distributions.Poisson(rate)
-    
+        rates = function_samples.exp().clamp(min=1e-6)
+        return torch.distributions.Poisson(rates)
+
     def expected_log_prob(self, target, function_dist, **kwargs):
-        mean = function_dist.mean
-        rate = mean.exp()
-        dist = torch.distributions.Poisson(rate)
-        return dist.log_prob(target)
+        # function_dist is the MultivariateNormal over f
+        def log_prob_fn(f):
+            # f has shape (num_locs, batch)
+            # broadcast target → (num_locs, batch)
+            return torch.distributions.Poisson(f.exp().clamp(min=1e-6)) \
+                        .log_prob(target.unsqueeze(0))
+        # Pass the *distribution* object, not mean/var
+        return self.quad(log_prob_fn, function_dist)
 
 
 # Load and preprocess the dataset (same as training)
@@ -215,7 +217,7 @@ for day, grp in tqdm(df_test.groupby('timestamp'),
         size=(S, nbox)
     )
     # Convert to Poisson rates
-    max_lambda = 1e3
+    max_lambda = 1e5
     lam_samps = np.exp(f_samps)
     lam_safe = np.minimum(lam_samps, max_lambda)
     # Sample counts Y ∼ Poisson(lam)
