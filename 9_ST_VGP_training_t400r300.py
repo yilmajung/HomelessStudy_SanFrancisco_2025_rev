@@ -12,6 +12,7 @@ import joblib
 import torch.nn.functional as F
 from gpytorch.mlls import VariationalELBO
 from gpytorch.utils.quadrature import GaussHermiteQuadrature1D
+from gpytorch.likelihoods import _OneDimensionalLikelihood
 
 # Load and preprocess the dataset
 print("Loading dataset...")
