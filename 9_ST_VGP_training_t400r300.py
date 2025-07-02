@@ -175,6 +175,23 @@ likelihood = QuadraturePoisson().to(device)
 model.train()
 likelihood.train()
 
+# ------- Variational posterior sanity check -------
+vd = model.variational_strategy._variational_distribution
+
+# 1) Mean
+print("variational_mean (first 5):", vd.variational_mean[:5])
+
+# 2) Scale‐tril diagonal
+print("scale_tril diag (first 5):", vd.chol_variational_covar.diag()[:5])
+
+# 3) List the raw parameters
+print("named_parameters under vd:")
+
+for name, param in vd.named_parameters():
+    print(f"  {name:30s} shape={tuple(param.shape)} requires_grad={param.requires_grad}")
+# --------------------------------------------------
+
+
 # Optimizer & MLL
 mll = VariationalELBO(likelihood, model, num_data=len(train_y))
 optimizer = torch.optim.Adam(
@@ -199,8 +216,6 @@ for epoch in tqdm(range(500)):
         output = model(x_b)
         loss = -mll(output, y_b)
         loss.backward()
-        print("raw_variational_loc.grad[:5] =", 
-              model.variational_strategy._variational_distribution.raw_variational_loc.grad[:5])
         optimizer.step()
         total_loss += loss.item()
     if epoch % 50 == 0:
