@@ -9,6 +9,9 @@ from sklearn.cluster import KMeans
 import joblib
 import torch.nn.functional as F
 import re
+from gpytorch.mlls import VariationalELBO
+from gpytorch.utils.quadrature import GaussHermiteQuadrature1D
+from gpytorch.likelihoods import _OneDimensionalLikelihood
 
 # Load the necessary files
 print("Loading saved artifacts...")
