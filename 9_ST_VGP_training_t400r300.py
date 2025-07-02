@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 import joblib
 import torch.nn.functional as F
 from gpytorch.mlls import VariationalELBO
-from gpytorch.likelihoods import PoissonLikelihood
+from gpytorch.utils.quadrature import GaussHermiteQuadrature1D
 
 # Load and preprocess the dataset
 print("Loading dataset...")
@@ -126,6 +126,29 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
+class QuadraturePoisson(_OneDimensionalLikelihood):
+    def __init__(self, num_locs=20):
+        super().__init__()
+        self.num_locs = num_locs
+
+    def forward(self, function_samples, **kwargs):
+        rates = function_samples.exp().clamp(min=1e-6)
+        return torch.distributions.Poisson(rates)
+
+    def expected_log_prob(self, target, function_dist, **kwargs):
+        # function_dist: a MultivariateNormal over f
+        def log_prob_fn(f):
+            return torch.distributions.Poisson(f.exp().clamp(min=1e-6)).log_prob(target)
+        # perform GH quadrature over each Gaussian
+        res = gauss_hermite_quadrature(
+            log_prob_fn,
+            function_dist.mean,
+            function_dist.variance,
+            self.num_locs,
+            True,   # keep dims
+        )
+        return res
+
 # class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
 #     def __init__(self):
 #         super().__init__()
@@ -148,7 +171,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 # Device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = STVGPModel(inducing_points.to(device), constant_mean=log_y_mean).to(device)
-likelihood = PoissonLikelihood().to(device)
+likelihood = QuadraturePoisson().to(device)
 
 model.train()
 likelihood.train()
