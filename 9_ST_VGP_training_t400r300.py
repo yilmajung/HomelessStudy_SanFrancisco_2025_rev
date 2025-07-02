@@ -130,7 +130,7 @@ class STVGPModel(gpytorch.models.ApproximateGP):
 class QuadraturePoisson(_OneDimensionalLikelihood):
     def __init__(self, num_locs=20):
         super().__init__()
-        # Only pass the number of quadrature nodes
+        # Only pass the number of nodes
         self.quad = GaussHermiteQuadrature1D(num_locs)
 
     def forward(self, function_samples, **kwargs):
@@ -138,14 +138,14 @@ class QuadraturePoisson(_OneDimensionalLikelihood):
         return torch.distributions.Poisson(rates)
 
     def expected_log_prob(self, target, function_dist, **kwargs):
+        # function_dist is the MultivariateNormal over f
         def log_prob_fn(f):
+            # f has shape (num_locs, batch)
+            # broadcast target → (num_locs, batch)
             return torch.distributions.Poisson(f.exp().clamp(min=1e-6)) \
                         .log_prob(target.unsqueeze(0))
-        return self.quad(
-            log_prob_fn,
-            function_dist.mean,
-            function_dist.variance
-        )
+        # Pass the *distribution* object, not mean/var
+        return self.quad(log_prob_fn, function_dist)
 
 
 # class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
