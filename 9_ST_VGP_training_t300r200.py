@@ -11,6 +11,8 @@ from sklearn.preprocessing import StandardScaler
 import joblib
 import torch.nn.functional as F
 from gpytorch.mlls import VariationalELBO
+from gpytorch.utils.quadrature import GaussHermiteQuadrature1D
+from gpytorch.likelihoods import _OneDimensionalLikelihood
 
 # Load and preprocess the dataset
 print("Loading dataset...")
@@ -125,32 +127,70 @@ class STVGPModel(gpytorch.models.ApproximateGP):
         covar = covar + torch.eye(covar.size(-1), device=x.device) * 1e-3  # jitter
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
-class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
-    def __init__(self):
+class QuadraturePoisson(_OneDimensionalLikelihood):
+    def __init__(self, num_locs=20):
         super().__init__()
-        # No parameters for vanilla Poisson
+        # Only pass the number of nodes
+        self.quad = GaussHermiteQuadrature1D(num_locs)
 
     def forward(self, function_samples, **kwargs):
-        # The function_samples should be on log-scale
-        rate = function_samples.exp()
-        rate = torch.nan_to_num(rate, nan=1e-6, posinf=1e6, neginf=1e-6)
-        rate = rate.clamp(min=1e-6, max=1e6)  # Ensure rate is positive
-        return torch.distributions.Poisson(rate)
-    
+        rates = function_samples.exp().clamp(min=1e-6)
+        return torch.distributions.Poisson(rates)
+
     def expected_log_prob(self, target, function_dist, **kwargs):
-        mean = function_dist.mean
-        rate = mean.exp()
-        dist = torch.distributions.Poisson(rate)
-        return dist.log_prob(target)
+        # function_dist is the MultivariateNormal over f
+        def log_prob_fn(f):
+            # f has shape (num_locs, batch)
+            # broadcast target → (num_locs, batch)
+            return torch.distributions.Poisson(f.exp().clamp(min=1e-6)) \
+                        .log_prob(target.unsqueeze(0))
+        # Pass the *distribution* object, not mean/var
+        return self.quad(log_prob_fn, function_dist)
+
+
+# class PoissonLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
+#     def __init__(self):
+#         super().__init__()
+#         # No parameters for vanilla Poisson
+
+#     def forward(self, function_samples, **kwargs):
+#         # The function_samples should be on log-scale
+#         rate = function_samples.exp()
+#         rate = torch.nan_to_num(rate, nan=1e-6, posinf=1e6, neginf=1e-6)
+#         rate = rate.clamp(min=1e-6, max=1e6)  # Ensure rate is positive
+#         return torch.distributions.Poisson(rate)
+    
+#     def expected_log_prob(self, target, function_dist, **kwargs):
+#         mean = function_dist.mean
+#         rate = mean.exp()
+#         dist = torch.distributions.Poisson(rate)
+#         return dist.log_prob(target)
 
 
 # Device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = STVGPModel(inducing_points.to(device), constant_mean=log_y_mean).to(device)
-likelihood = PoissonLikelihood().to(device)
+likelihood = QuadraturePoisson().to(device)
 
 model.train()
 likelihood.train()
+
+# ------- Variational posterior sanity check -------
+vd = model.variational_strategy._variational_distribution
+
+# 1) Mean
+print("variational_mean (first 5):", vd.variational_mean[:5])
+
+# 2) Scale‐tril diagonal
+print("scale_tril diag (first 5):", vd.chol_variational_covar.diag()[:5])
+
+# 3) List the raw parameters
+print("named_parameters under vd:")
+
+for name, param in vd.named_parameters():
+    print(f"  {name:30s} shape={tuple(param.shape)} requires_grad={param.requires_grad}")
+# --------------------------------------------------
+
 
 # Optimizer & MLL
 mll = VariationalELBO(likelihood, model, num_data=len(train_y))
@@ -158,8 +198,12 @@ optimizer = torch.optim.Adam(
     [
         {'params': model.parameters()},
         {'params': likelihood.parameters()}
-    ], lr=0.01
+    ], lr=0.005
 )
+
+for name, param in model.named_parameters():
+    if "variational" in name:
+        print(name, "requires_grad?", param.requires_grad)
 
 # Training loop
 print("Starting training...")
@@ -176,6 +220,10 @@ for epoch in tqdm(range(500)):
         total_loss += loss.item()
     if epoch % 50 == 0:
         print(f"Epoch {epoch}, Loss {total_loss:.3f}")
+        vd = model.variational_strategy._variational_distribution
+        print(f"\n=== After epoch {epoch} ===")
+        print(" variational_mean[:5]:", vd.variational_mean[:5].cpu().detach().numpy())
+        print(" scale_tril diag[:5]:", vd.chol_variational_covar.diag()[:5].cpu().detach().numpy())
 
 # Save
 torch.save(model.state_dict(), 'stvgp_pois_velbo.pth')
