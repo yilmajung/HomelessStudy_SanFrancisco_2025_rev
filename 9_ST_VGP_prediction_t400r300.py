@@ -100,7 +100,7 @@ df_test = df[df['ground_truth'].isna()]
 
 # Instantiate and load trained parameters
 model = STVGPModel(inducing_points.to(device), constant_mean=constant_mean).to(device)
-likelihood = PoissonLikelihood().to(device)
+likelihood = QuadraturePoisson().to(device)
 
 model.load_state_dict(torch.load('stvgp_pois_velbo_t400r300.pth', map_location=device))
 likelihood.load_state_dict(torch.load('likelihood_pois_velbo_t400r300.pth', map_location=device))
